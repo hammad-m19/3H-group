@@ -276,6 +276,8 @@
                     <button class="admin-tab active" data-tab="text">📝 Edit Text</button>
                     <button class="admin-tab" data-tab="home-projects">🏠 Home Projects</button>
                     <button class="admin-tab" data-tab="all-projects">📋 All Projects</button>
+                    <button class="admin-tab" data-tab="jobs">💼 Jobs</button>
+                    <button class="admin-tab" data-tab="applications">📄 Applications</button>
                     <button class="admin-tab" data-tab="settings">⚙️ Settings</button>
                 </div>
 
@@ -425,6 +427,39 @@
                         <button class="btn-add-project" id="resetAllBtn" style="background:#ff6b6b;">🗑️ Reset Everything</button>
                     </div>
                 </div>
+                </div>
+                
+                <!-- JOBS TAB -->
+                <div class="admin-tab-content" id="tab-jobs">
+                    <div class="admin-section">
+                        <h3>Create New Job</h3>
+                        <div class="admin-field">
+                            <label>Job Title</label>
+                            <input type="text" id="newJobTitle" placeholder="e.g. Senior Architect">
+                        </div>
+                        <div class="admin-field">
+                            <label>Job Description</label>
+                            <textarea id="newJobDesc" rows="4" placeholder="Enter job description..."></textarea>
+                        </div>
+                        <button class="btn-add-project" id="createJobBtn">➕ Create Job</button>
+                    </div>
+                    <div class="admin-section">
+                        <h3>Active Jobs</h3>
+                        <div id="admin-jobs-list" style="margin-top: 15px;">
+                            <p style="color:var(--text-secondary);">Loading jobs...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- APPLICATIONS TAB -->
+                <div class="admin-tab-content" id="tab-applications">
+                    <div class="admin-section">
+                        <h3>Candidate Applications</h3>
+                        <div id="admin-applications-list" style="margin-top: 15px; display: flex; flex-direction: column; gap: 15px;">
+                            <p style="color:var(--text-secondary);">Loading applications...</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         `;
         document.body.appendChild(overlay);
@@ -436,15 +471,43 @@
                 overlay.querySelectorAll('.admin-tab-content').forEach(c => c.classList.remove('active'));
                 tab.classList.add('active');
                 document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+                
+                if (tab.dataset.tab === 'jobs') fetchAdminJobs();
+                if (tab.dataset.tab === 'applications') fetchAdminApplications();
             });
         });
 
-        // Close
+        // Initialize content
         document.getElementById('adminClose').addEventListener('click', () => {
             overlay.classList.remove('active');
         });
 
         // Save
+        // Jobs Handlers
+        document.getElementById('createJobBtn').addEventListener('click', async () => {
+            const title = document.getElementById('newJobTitle').value;
+            const desc = document.getElementById('newJobDesc').value;
+            if (!title || !desc) return showToast('Please enter title and description', true);
+            
+            try {
+                const res = await fetch('/api/jobs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, description: desc })
+                });
+                if (res.ok) {
+                    showToast('Job created successfully!');
+                    document.getElementById('newJobTitle').value = '';
+                    document.getElementById('newJobDesc').value = '';
+                    fetchAdminJobs();
+                } else {
+                    showToast('Failed to create job', true);
+                }
+            } catch(e) {
+                showToast('Error creating job', true);
+            }
+        });
+
         document.getElementById('adminSave').addEventListener('click', saveAllChanges);
 
         // Home page file upload
@@ -930,6 +993,87 @@
 
     // ============================================
     // INITIALIZE
+    // ============================================
+    // API FETCH FUNCTIONS
+    // ============================================
+    async function fetchAdminJobs() {
+        const container = document.getElementById('admin-jobs-list');
+        try {
+            const res = await fetch('/api/jobs');
+            const jobs = await res.json();
+            
+            if (jobs.length === 0) {
+                container.innerHTML = '<p style="color:var(--text-secondary);">No active jobs.</p>';
+                return;
+            }
+            
+            container.innerHTML = jobs.map(j => `
+                <div style="background:var(--bg-primary); padding:15px; border-radius:8px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <h4 style="color:white; margin-bottom:5px;">${j.title}</h4>
+                        <p style="color:var(--text-secondary); font-size:0.85rem;">${new Date(j.createdAt).toLocaleDateString()}</p>
+                    </div>
+                    <button class="btn-admin btn-admin-close delete-job-btn" data-id="${j._id}">🗑️ Delete</button>
+                </div>
+            `).join('');
+
+            container.querySelectorAll('.delete-job-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const id = e.target.dataset.id;
+                    if(confirm('Delete this job?')) {
+                        await fetch('/api/jobs/' + id, { method: 'DELETE' });
+                        fetchAdminJobs();
+                    }
+                });
+            });
+        } catch(e) {
+            container.innerHTML = '<p style="color:#ff6b6b;">Error loading jobs.</p>';
+        }
+    }
+
+    async function fetchAdminApplications() {
+        const container = document.getElementById('admin-applications-list');
+        try {
+            const res = await fetch('/api/applications');
+            const apps = await res.json();
+            
+            if (apps.length === 0) {
+                container.innerHTML = '<p style="color:var(--text-secondary);">No applications yet.</p>';
+                return;
+            }
+            
+            container.innerHTML = apps.map(app => `
+                <div style="background:var(--bg-primary); padding:20px; border-radius:12px; border:1px solid #333;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <div>
+                            <h3 style="color:var(--primary-color); margin-bottom:5px;">${app.name}</h3>
+                            <p style="color:var(--text-secondary); font-size:0.9rem;">${app.email} | Applied for: <strong>${app.jobId ? app.jobId.title : 'Deleted Job'}</strong></p>
+                        </div>
+                        <div style="background:${app.aiScore >= 80 ? '#4ade8020' : (app.aiScore >= 50 ? '#facc1520' : '#f8717120')}; 
+                                    color:${app.aiScore >= 80 ? '#4ade80' : (app.aiScore >= 50 ? '#facc15' : '#f87171')};
+                                    padding: 8px 15px; border-radius: 20px; font-weight:bold; font-size: 1.2rem;">
+                            AI Score: ${app.aiScore}/100
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 15px; background:var(--bg-tertiary); padding:15px; border-radius:8px;">
+                        <h4 style="color:white; margin-bottom:10px; font-size:0.9rem;">AI Rationale</h4>
+                        <p style="color:var(--text-secondary); line-height:1.5;">${app.aiRationale}</p>
+                    </div>
+
+                    <div style="margin-top: 15px; background:var(--bg-tertiary); padding:15px; border-radius:8px;">
+                        <h4 style="color:white; margin-bottom:10px; font-size:0.9rem;">Custom Answers</h4>
+                        <p style="color:var(--text-secondary); line-height:1.5; white-space:pre-wrap;">${app.answers}</p>
+                    </div>
+                </div>
+            `).join('');
+        } catch(e) {
+            container.innerHTML = '<p style="color:#ff6b6b;">Error loading applications.</p>';
+        }
+    }
+
+    // ============================================
+    // INITIALIZATION
     // ============================================
     function init() {
         applySavedChanges();
