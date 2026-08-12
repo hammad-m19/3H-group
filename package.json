@@ -1,5 +1,14 @@
 {
+  "scripts": {
+    "start": "node api/index.js"
+  },
   "dependencies": {
-    "express": "^5.2.1"
+    "@google/genai": "^2.16.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "mongoose": "^9.9.2",
+    "multer": "^2.2.0",
+    "pdf-parse": "^2.4.5"
   }
 }
