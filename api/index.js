@@ -74,7 +74,8 @@ app.post('/api/jobs', async (req, res) => {
 app.delete('/api/jobs/:id', async (req, res) => {
     try {
         await Job.findByIdAndDelete(req.params.id);
-        res.json({ message: 'Job deleted' });
+        await Application.deleteMany({ jobId: req.params.id });
+        res.json({ message: 'Job and associated applications deleted' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
