@@ -2,7 +2,6 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const multer = require('multer');
-const pdfParse = require('pdf-parse');
 const { GoogleGenAI } = require('@google/genai');
 const cors = require('cors');
 
@@ -92,9 +91,9 @@ app.post('/api/apply', upload.single('resume'), async (req, res) => {
         const job = await Job.findById(jobId);
         if (!job) return res.status(404).json({ error: "Job not found" });
 
-        // Parse PDF
-        const pdfData = await pdfParse(req.file.buffer);
-        const resumeText = pdfData.text;
+        // Convert PDF buffer to Base64 to send directly to Gemini
+        const base64Pdf = req.file.buffer.toString("base64");
+        const resumeText = "PDF analyzed directly by Gemini AI"; 
 
         // Gemini AI Evaluation
         let aiScore = 0;
@@ -115,12 +114,18 @@ Job Description: ${job.description}
 
 Candidate Name: ${name}
 Candidate Answers: ${answers}
-Candidate Resume Text:
-${resumeText.substring(0, 5000)} // Limiting to 5000 chars to avoid token limits just in case
 `;
                 const response = await ai.models.generateContent({
                     model: 'gemini-2.5-flash',
-                    contents: prompt,
+                    contents: [
+                        prompt,
+                        {
+                            inlineData: {
+                                data: base64Pdf,
+                                mimeType: 'application/pdf'
+                            }
+                        }
+                    ],
                 });
                 
                 let resultText = response.text;
