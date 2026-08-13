@@ -6,21 +6,48 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('applyForm');
     const msg = document.getElementById('applyMessage');
 
-    closeBtn.onclick = () => {
+    const statusModal = document.getElementById('statusModal');
+    const statusDoneBtn = document.getElementById('statusDoneBtn');
+    const statusCloseBtn = document.getElementById('statusCloseBtn');
+
+    function closeApplyModal() {
         modal.classList.remove('active');
         setTimeout(() => modal.style.display = 'none', 300); // Wait for transition
-    };
+    }
+
+    function closeStatusModal() {
+        statusModal.classList.remove('active');
+        setTimeout(() => {
+            statusModal.style.display = 'none';
+            document.getElementById('statusLoading').style.display = 'block';
+            document.getElementById('statusSuccess').style.display = 'none';
+            document.getElementById('statusError').style.display = 'none';
+        }, 300);
+    }
+
+    closeBtn.onclick = closeApplyModal;
+    statusDoneBtn.onclick = closeStatusModal;
+    statusCloseBtn.onclick = closeStatusModal;
+    
     window.onclick = (e) => { 
         if (e.target == modal) {
-            modal.classList.remove('active');
-            setTimeout(() => modal.style.display = 'none', 300);
+            closeApplyModal();
+        } else if (e.target == statusModal) {
+            closeStatusModal();
         }
     };
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        msg.textContent = 'Submitting... Please wait.';
-        msg.style.color = 'var(--text-secondary)';
+        
+        // Close apply modal and open status modal
+        closeApplyModal();
+        statusModal.style.display = 'flex';
+        setTimeout(() => statusModal.classList.add('active'), 10);
+        
+        document.getElementById('statusLoading').style.display = 'block';
+        document.getElementById('statusSuccess').style.display = 'none';
+        document.getElementById('statusError').style.display = 'none';
 
         const formData = new FormData();
         formData.append('jobId', document.getElementById('jobId').value);
@@ -36,21 +63,19 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const result = await response.json();
 
+            document.getElementById('statusLoading').style.display = 'none';
+
             if (response.ok) {
-                msg.textContent = 'Application submitted successfully!';
-                msg.style.color = '#4ade80';
+                document.getElementById('statusSuccess').style.display = 'block';
                 form.reset();
-                setTimeout(() => {
-                    modal.classList.remove('active');
-                    setTimeout(() => modal.style.display = 'none', 300);
-                }, 3000);
             } else {
-                msg.textContent = result.error || 'Failed to submit.';
-                msg.style.color = '#f87171';
+                document.getElementById('statusError').style.display = 'block';
+                document.getElementById('statusErrorMsg').textContent = result.error || 'Failed to submit.';
             }
         } catch (error) {
-            msg.textContent = 'Network error.';
-            msg.style.color = '#f87171';
+            document.getElementById('statusLoading').style.display = 'none';
+            document.getElementById('statusError').style.display = 'block';
+            document.getElementById('statusErrorMsg').textContent = 'Network error. Please try again.';
         }
     });
 });
