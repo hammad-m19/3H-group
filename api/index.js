@@ -5,6 +5,13 @@ const multer = require('multer');
 const { GoogleGenAI } = require('@google/genai');
 const cors = require('cors');
 
+// Mock DOM objects for Vercel / serverless environment to prevent pdf-parse from crashing
+global.DOMMatrix = class DOMMatrix {};
+global.ImageData = class ImageData {};
+global.Path2D = class Path2D {};
+global.window = {};
+const pdfParse = require('pdf-parse');
+
 const Job = require('./models/Job');
 const Application = require('./models/Application');
 
@@ -92,9 +99,14 @@ app.post('/api/apply', upload.single('resume'), async (req, res) => {
         const job = await Job.findById(jobId);
         if (!job) return res.status(404).json({ error: "Job not found" });
 
-        // Convert PDF buffer to Base64 to send directly to Gemini
-        const base64Pdf = req.file.buffer.toString("base64");
-        const resumeText = "PDF analyzed directly by Gemini AI";
+        // Parse PDF locally to save time and API tokens
+        let resumeText = "Could not read resume text.";
+        try {
+            const pdfData = await pdfParse(req.file.buffer);
+            resumeText = pdfData.text;
+        } catch (pdfErr) {
+            console.error("PDF Parsing Error:", pdfErr);
+        }
 
         // Gemini AI Evaluation
         let aiScore = 0;
@@ -115,18 +127,16 @@ Job Description: ${job.description}
 
 Candidate Name: ${name}
 Candidate Answers: ${answers}
+
+Candidate Resume Text:
+${resumeText}
 `;
                 const response = await ai.models.generateContent({
-                    model: 'gemini-2.5',
-                    contents: [
-                        prompt,
-                        {
-                            inlineData: {
-                                data: base64Pdf,
-                                mimeType: 'application/pdf'
-                            }
-                        }
-                    ],
+                    model: 'gemini-3.6-flash',
+                    contents: [prompt],
+                    config: {
+                        responseMimeType: "application/json",
+                    }
                 });
 
                 let resultText = response.text;
