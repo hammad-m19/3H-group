@@ -9,7 +9,6 @@ const cors = require('cors');
 global.DOMMatrix = class DOMMatrix {};
 global.ImageData = class ImageData {};
 global.Path2D = class Path2D {};
-global.window = {};
 const pdfParse = require('pdf-parse');
 
 const Job = require('./models/Job');
