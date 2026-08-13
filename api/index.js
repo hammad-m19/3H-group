@@ -181,6 +181,32 @@ app.get('/api/applications', async (req, res) => {
     }
 });
 
+// Delete all applications
+app.delete('/api/applications', async (req, res) => {
+    try {
+        await Application.deleteMany({});
+        res.json({ message: 'All applications deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Download resume
+app.get('/api/applications/:id/resume', async (req, res) => {
+    try {
+        const appDoc = await Application.findById(req.params.id);
+        if (!appDoc || !appDoc.resumeBuffer) {
+            return res.status(404).send('Resume not found');
+        }
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="resume_${appDoc.name}.pdf"`);
+        res.send(appDoc.resumeBuffer);
+    } catch (error) {
+        res.status(500).send('Error retrieving resume');
+    }
+});
+
+
 module.exports = app;
 
 if (require.main === module) {

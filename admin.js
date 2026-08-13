@@ -454,7 +454,16 @@
                 <!-- APPLICATIONS TAB -->
                 <div class="admin-tab-content" id="tab-applications">
                     <div class="admin-section">
-                        <h3>Candidate Applications</h3>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                            <h3>Candidate Applications</h3>
+                            <button id="deleteAllAppsBtn" class="btn-delete-project" style="padding:8px 15px;">🗑️ Delete All</button>
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <label style="color:var(--text-secondary); margin-right:10px;">Filter by Job:</label>
+                            <select id="appJobFilter" style="padding:8px; border-radius:6px; background:var(--bg-tertiary); color:white; border:1px solid #444; width:250px;">
+                                <option value="all">All Jobs</option>
+                            </select>
+                        </div>
                         <div id="admin-applications-list" style="margin-top: 15px; display: flex; flex-direction: column; gap: 15px;">
                             <p style="color:var(--text-secondary);">Loading applications...</p>
                         </div>
@@ -500,12 +509,33 @@
                     document.getElementById('newJobTitle').value = '';
                     document.getElementById('newJobDesc').value = '';
                     fetchAdminJobs();
+                    // Refetch applications as jobs have changed
+                    fetchAdminApplications();
                 } else {
                     showToast('Failed to create job', true);
                 }
             } catch(e) {
                 showToast('Error creating job', true);
             }
+        });
+
+        document.getElementById('deleteAllAppsBtn').addEventListener('click', async () => {
+            if (!confirm('Are you sure you want to delete ALL candidate applications and scores? This cannot be undone.')) return;
+            try {
+                const res = await fetch('/api/applications', { method: 'DELETE' });
+                if (res.ok) {
+                    showToast('All applications deleted successfully!');
+                    fetchAdminApplications();
+                } else {
+                    showToast('Failed to delete applications', true);
+                }
+            } catch(e) {
+                showToast('Error deleting applications', true);
+            }
+        });
+
+        document.getElementById('appJobFilter').addEventListener('change', () => {
+            renderAdminApplications();
         });
 
         document.getElementById('adminSave').addEventListener('click', saveAllChanges);
@@ -1031,45 +1061,82 @@
         }
     }
 
+    let currentApplications = [];
+    let currentJobs = [];
+
     async function fetchAdminApplications() {
         const container = document.getElementById('admin-applications-list');
+        const filterSelect = document.getElementById('appJobFilter');
+        
+        container.innerHTML = '<p style="color:var(--text-secondary);">Loading applications...</p>';
         try {
-            const res = await fetch('/api/applications');
-            const apps = await res.json();
+            // Fetch apps and jobs in parallel
+            const [appsRes, jobsRes] = await Promise.all([
+                fetch('/api/applications'),
+                fetch('/api/jobs')
+            ]);
             
-            if (apps.length === 0) {
-                container.innerHTML = '<p style="color:var(--text-secondary);">No applications yet.</p>';
-                return;
-            }
+            currentApplications = await appsRes.json();
+            currentJobs = await jobsRes.json();
             
-            container.innerHTML = apps.map(app => `
-                <div style="background:var(--bg-primary); padding:20px; border-radius:12px; border:1px solid #333;">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                        <div>
-                            <h3 style="color:var(--primary-color); margin-bottom:5px;">${app.name}</h3>
-                            <p style="color:var(--text-secondary); font-size:0.9rem;">${app.email} | Applied for: <strong>${app.jobId ? app.jobId.title : 'Deleted Job'}</strong></p>
-                        </div>
-                        <div style="background:${app.aiScore >= 80 ? '#4ade8020' : (app.aiScore >= 50 ? '#facc1520' : '#f8717120')}; 
-                                    color:${app.aiScore >= 80 ? '#4ade80' : (app.aiScore >= 50 ? '#facc15' : '#f87171')};
-                                    padding: 8px 15px; border-radius: 20px; font-weight:bold; font-size: 1.2rem;">
-                            AI Score: ${app.aiScore}/100
-                        </div>
-                    </div>
-                    
-                    <div style="margin-top: 15px; background:var(--bg-tertiary); padding:15px; border-radius:8px;">
-                        <h4 style="color:white; margin-bottom:10px; font-size:0.9rem;">AI Rationale</h4>
-                        <p style="color:var(--text-secondary); line-height:1.5;">${app.aiRationale}</p>
-                    </div>
-
-                    <div style="margin-top: 15px; background:var(--bg-tertiary); padding:15px; border-radius:8px;">
-                        <h4 style="color:white; margin-bottom:10px; font-size:0.9rem;">Custom Answers</h4>
-                        <p style="color:var(--text-secondary); line-height:1.5; white-space:pre-wrap;">${app.answers}</p>
-                    </div>
-                </div>
-            `).join('');
+            // Populate filter dropdown
+            const currentFilter = filterSelect.value;
+            filterSelect.innerHTML = '<option value="all">All Jobs</option>';
+            currentJobs.forEach(job => {
+                const option = document.createElement('option');
+                option.value = job._id;
+                option.textContent = job.title;
+                filterSelect.appendChild(option);
+            });
+            filterSelect.value = currentFilter || "all";
+            
+            renderAdminApplications();
         } catch(e) {
             container.innerHTML = '<p style="color:#ff6b6b;">Error loading applications.</p>';
         }
+    }
+
+    function renderAdminApplications() {
+        const container = document.getElementById('admin-applications-list');
+        const filterSelect = document.getElementById('appJobFilter');
+        const selectedJobId = filterSelect.value;
+        
+        let appsToRender = currentApplications;
+        if (selectedJobId !== 'all') {
+            appsToRender = currentApplications.filter(app => app.jobId && app.jobId._id === selectedJobId);
+        }
+
+        if (appsToRender.length === 0) {
+            container.innerHTML = '<p style="color:var(--text-secondary);">No applications match the current filter.</p>';
+            return;
+        }
+        
+        container.innerHTML = appsToRender.map(app => `
+            <div style="background:var(--bg-primary); padding:20px; border-radius:12px; border:1px solid #333;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                    <div>
+                        <h3 style="color:var(--primary-color); margin-bottom:5px;">${app.name}</h3>
+                        <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:10px;">${app.email} | Applied for: <strong>${app.jobId ? app.jobId.title : 'Deleted Job'}</strong></p>
+                        <a href="/api/applications/${app._id}/resume" target="_blank" class="btn" style="background:#3b82f6; color:white; padding:5px 12px; border-radius:6px; font-size:0.85rem; text-decoration:none; display:inline-block;">📄 View CV</a>
+                    </div>
+                    <div style="background:${app.aiScore >= 80 ? '#4ade8020' : (app.aiScore >= 50 ? '#facc1520' : '#f8717120')}; 
+                                color:${app.aiScore >= 80 ? '#4ade80' : (app.aiScore >= 50 ? '#facc15' : '#f87171')};
+                                padding: 8px 15px; border-radius: 20px; font-weight:bold; font-size: 1.2rem;">
+                        AI Score: ${app.aiScore}/100
+                    </div>
+                </div>
+                
+                <div style="margin-top: 15px; background:var(--bg-tertiary); padding:15px; border-radius:8px;">
+                    <h4 style="color:white; margin-bottom:10px; font-size:0.9rem;">AI Rationale</h4>
+                    <p style="color:var(--text-secondary); line-height:1.5;">${app.aiRationale}</p>
+                </div>
+
+                <div style="margin-top: 15px; background:var(--bg-tertiary); padding:15px; border-radius:8px;">
+                    <h4 style="color:white; margin-bottom:10px; font-size:0.9rem;">Custom Answers</h4>
+                    <p style="color:var(--text-secondary); line-height:1.5; white-space:pre-wrap;">${app.answers}</p>
+                </div>
+            </div>
+        `).join('');
     }
 
     // ============================================
