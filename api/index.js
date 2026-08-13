@@ -94,16 +94,16 @@ app.post('/api/apply', upload.single('resume'), async (req, res) => {
 
         // Convert PDF buffer to Base64 to send directly to Gemini
         const base64Pdf = req.file.buffer.toString("base64");
-        const resumeText = "PDF analyzed directly by Gemini AI"; 
+        const resumeText = "PDF analyzed directly by Gemini AI";
 
         // Gemini AI Evaluation
         let aiScore = 0;
         let aiRationale = "AI evaluation failed.";
-        
+
         if (process.env.GEMINI_API_KEY) {
             try {
                 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-                
+
                 const prompt = `
 You are an expert HR recruiter. Please evaluate the following candidate for the job provided.
 Return ONLY a raw JSON object (no markdown formatting, no backticks, just the json) with two keys:
@@ -117,7 +117,7 @@ Candidate Name: ${name}
 Candidate Answers: ${answers}
 `;
                 const response = await ai.models.generateContent({
-                    model: 'gemini-3.5-flash-lite',
+                    model: 'gemini-2.5',
                     contents: [
                         prompt,
                         {
@@ -128,11 +128,11 @@ Candidate Answers: ${answers}
                         }
                     ],
                 });
-                
+
                 let resultText = response.text;
                 // Clean up potential markdown formatting from the response
                 resultText = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
-                
+
                 const aiResult = JSON.parse(resultText);
                 aiScore = aiResult.score;
                 aiRationale = aiResult.rationale;
@@ -167,14 +167,14 @@ app.get('/api/applications', async (req, res) => {
         const apps = await Application.find()
             .populate('jobId', 'title')
             .sort({ aiScore: -1 }); // Sort by AI score descending
-            
+
         // Don't send the full resume buffer in the list API to save bandwidth
         const safeApps = apps.map(app => {
             const obj = app.toObject();
             delete obj.resumeBuffer;
             return obj;
         });
-        
+
         res.json(safeApps);
     } catch (error) {
         res.status(500).json({ error: error.message });
