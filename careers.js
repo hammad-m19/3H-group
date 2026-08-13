@@ -6,8 +6,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('applyForm');
     const msg = document.getElementById('applyMessage');
 
-    closeBtn.onclick = () => modal.style.display = 'none';
-    window.onclick = (e) => { if (e.target == modal) modal.style.display = 'none'; }
+    closeBtn.onclick = () => {
+        modal.classList.remove('active');
+        setTimeout(() => modal.style.display = 'none', 300); // Wait for transition
+    };
+    window.onclick = (e) => { 
+        if (e.target == modal) {
+            modal.classList.remove('active');
+            setTimeout(() => modal.style.display = 'none', 300);
+        }
+    };
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -32,7 +40,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 msg.textContent = 'Application submitted successfully!';
                 msg.style.color = '#4ade80';
                 form.reset();
-                setTimeout(() => modal.style.display = 'none', 3000);
+                setTimeout(() => {
+                    modal.classList.remove('active');
+                    setTimeout(() => modal.style.display = 'none', 300);
+                }, 3000);
             } else {
                 msg.textContent = result.error || 'Failed to submit.';
                 msg.style.color = '#f87171';
@@ -75,5 +86,8 @@ function openApplyModal(id, title) {
     document.getElementById('jobId').value = id;
     document.getElementById('modalJobTitle').textContent = title;
     document.getElementById('applyMessage').textContent = '';
-    document.getElementById('applyModal').style.display = 'flex';
+    const modal = document.getElementById('applyModal');
+    modal.style.display = 'flex';
+    // Small delay to allow display block to apply before adding class for opacity transition
+    setTimeout(() => modal.classList.add('active'), 10);
 }
