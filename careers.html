@@ -34,6 +34,17 @@
         
         .job-title { font-size: 1.6rem; color: var(--dark-gray); margin-bottom: 12px; font-weight: 700; }
         .job-desc { color: var(--text-gray); margin-bottom: 25px; line-height: 1.7; white-space: pre-wrap; font-size: 0.95rem; }
+        .job-desc-preview {
+            color: var(--text-gray); 
+            line-height: 1.7; 
+            font-size: 0.95rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            white-space: pre-wrap;
+            margin-bottom: 15px;
+        }
         
         .apply-btn { 
             width: 100%; 
@@ -161,6 +172,18 @@
             </div>
         </div>
     </section>
+
+    <!-- Job Details Modal -->
+    <div class="modal-overlay" id="jobDetailsModal">
+        <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h3 id="detailsJobTitle"></h3>
+                <button class="close-modal" id="closeDetailsModal">&times;</button>
+            </div>
+            <div id="detailsJobDesc" class="job-desc" style="margin-bottom: 30px;"></div>
+            <button class="btn btn-primary apply-btn" id="detailsApplyBtn">Apply Now</button>
+        </div>
+    </div>
 
     <!-- Application Modal -->
     <div class="modal-overlay" id="applyModal">

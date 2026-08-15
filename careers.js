@@ -6,6 +6,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('applyForm');
     const msg = document.getElementById('applyMessage');
 
+    const detailsModal = document.getElementById('jobDetailsModal');
+    const closeDetailsBtn = document.getElementById('closeDetailsModal');
+    const detailsApplyBtn = document.getElementById('detailsApplyBtn');
+
+    function closeDetailsModal() {
+        detailsModal.classList.remove('active');
+        setTimeout(() => detailsModal.style.display = 'none', 300);
+    }
+
+    if (closeDetailsBtn) closeDetailsBtn.onclick = closeDetailsModal;
+    
+    let currentJobId = null;
+    let currentJobTitle = null;
+
+    if (detailsApplyBtn) {
+        detailsApplyBtn.onclick = () => {
+            closeDetailsModal();
+            openApplyModal(currentJobId, currentJobTitle);
+        };
+    }
+
     const statusModal = document.getElementById('statusModal');
     const statusDoneBtn = document.getElementById('statusDoneBtn');
     const statusCloseBtn = document.getElementById('statusCloseBtn');
@@ -34,7 +55,24 @@ document.addEventListener('DOMContentLoaded', () => {
             closeApplyModal();
         } else if (e.target == statusModal) {
             closeStatusModal();
+        } else if (e.target == detailsModal) {
+            closeDetailsModal();
         }
+    };
+
+    window.openJobDetailsModal = function(id, title) {
+        const jobs = window.allJobs || [];
+        const job = jobs.find(j => j._id === id);
+        if (!job) return;
+
+        document.getElementById('detailsJobTitle').textContent = job.title;
+        document.getElementById('detailsJobDesc').textContent = job.description;
+        
+        currentJobId = job._id;
+        currentJobTitle = job.title;
+        
+        detailsModal.style.display = 'flex';
+        setTimeout(() => detailsModal.classList.add('active'), 10);
     };
 
     form.addEventListener('submit', async (e) => {
@@ -85,6 +123,7 @@ async function fetchJobs() {
     try {
         const res = await fetch('/api/jobs');
         const jobs = await res.json();
+        window.allJobs = jobs;
         
         container.innerHTML = '';
         if (jobs.length === 0) {
@@ -95,10 +134,15 @@ async function fetchJobs() {
         jobs.forEach(job => {
             const card = document.createElement('div');
             card.className = 'job-card';
+            card.style.cursor = 'pointer';
+            card.onclick = () => window.openJobDetailsModal(job._id, job.title);
+            
             card.innerHTML = `
                 <h3 class="job-title">${job.title}</h3>
-                <div class="job-desc">${job.description}</div>
-                <button class="btn btn-primary apply-btn" onclick="openApplyModal('${job._id}', '${job.title}')">Apply Now</button>
+                <div class="job-desc-preview">${job.description}</div>
+                <div style="margin-top: 15px; color: var(--red); font-weight: 600; display: flex; align-items: center; gap: 5px;">
+                    Read more <span style="font-size: 1.2rem;">&rarr;</span>
+                </div>
             `;
             container.appendChild(card);
         });
