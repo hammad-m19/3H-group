@@ -216,6 +216,58 @@ app.get('/api/applications/:id/resume', async (req, res) => {
 });
 
 
+// --- AI HR CHATBOT ---
+app.post('/api/admin/chat', async (req, res) => {
+    try {
+        const { query, jobId } = req.body;
+        if (!query) return res.status(400).json({ error: "Query is required" });
+        if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: "Gemini API Key is not configured." });
+
+        // Filter by job if provided
+        let filter = {};
+        if (jobId && jobId !== 'all') {
+            filter.jobId = jobId;
+        }
+
+        const apps = await Application.find(filter).populate('jobId', 'title');
+
+        // Prepare data for AI
+        const candidates = apps.map(app => ({
+            name: app.name,
+            email: app.email,
+            jobTitle: app.jobId ? app.jobId.title : 'Unknown Job',
+            answers: app.answers,
+            aiScore: app.aiScore,
+            aiRationale: app.aiRationale,
+            resumeText: app.resumeText
+        }));
+
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        
+        const prompt = `
+You are an expert HR Assistant for 3H GROUP Construction Company. 
+Your task is to answer the admin's query based on the following candidate data.
+
+Admin's Query: "${query}"
+
+Here are the candidates:
+${JSON.stringify(candidates, null, 2)}
+
+Provide a helpful, well-formatted response (using markdown if needed) to answer the admin's query based on the candidate data provided above.
+`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-3.6-flash',
+            contents: [prompt],
+        });
+
+        res.json({ reply: response.text });
+    } catch (error) {
+        console.error("Chat API Error:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = app;
 
 if (require.main === module) {

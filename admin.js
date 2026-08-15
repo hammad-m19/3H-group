@@ -453,6 +453,20 @@
 
                 <!-- APPLICATIONS TAB -->
                 <div class="admin-tab-content" id="tab-applications">
+                    <div class="admin-section" style="margin-bottom: 20px;">
+                        <h3>🤖 AI HR Assistant</h3>
+                        <p style="color:var(--text-secondary); font-size: 0.9rem; margin-bottom: 10px;">Ask the AI about the candidates matching your current job filter.</p>
+                        <div id="ai-chat-window" style="background: rgba(0,0,0,0.2); border: 1px solid #444; border-radius: 8px; height: 250px; overflow-y: auto; padding: 15px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 10px;">
+                            <div style="color: #4ade80; background: rgba(74, 222, 128, 0.1); padding: 10px; border-radius: 8px; align-self: flex-start; max-width: 80%;">
+                                Hello! I'm your AI HR Assistant. You can ask me things like "Who is the best fit for this role?" or "Which candidates are located near New York?"
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="aiChatInput" placeholder="Ask a question..." style="flex: 1; padding: 10px; border-radius: 8px; background: var(--bg-tertiary); color: white; border: 1px solid #444;">
+                            <button id="aiChatSendBtn" class="btn-add-project" style="width: auto; padding: 0 20px;">Send</button>
+                        </div>
+                    </div>
+
                     <div class="admin-section">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                             <h3>Candidate Applications</h3>
@@ -537,6 +551,69 @@
         document.getElementById('appJobFilter').addEventListener('change', () => {
             renderAdminApplications();
         });
+
+        // AI Chatbot Handlers
+        const chatInput = document.getElementById('aiChatInput');
+        const chatSendBtn = document.getElementById('aiChatSendBtn');
+        
+        async function handleAIChat() {
+            const query = chatInput.value.trim();
+            if (!query) return;
+            
+            const chatWindow = document.getElementById('ai-chat-window');
+            
+            // Append user message
+            const userMsg = document.createElement('div');
+            userMsg.style.cssText = 'color: white; background: rgba(255, 255, 255, 0.1); padding: 10px; border-radius: 8px; align-self: flex-end; max-width: 80%;';
+            userMsg.textContent = query;
+            chatWindow.appendChild(userMsg);
+            
+            chatInput.value = '';
+            
+            // Append loading indicator
+            const loadingMsg = document.createElement('div');
+            loadingMsg.style.cssText = 'color: #4ade80; font-style: italic; align-self: flex-start; padding: 10px;';
+            loadingMsg.textContent = 'Thinking...';
+            chatWindow.appendChild(loadingMsg);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+            
+            const jobId = document.getElementById('appJobFilter').value;
+            
+            try {
+                const res = await fetch('/api/admin/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query, jobId })
+                });
+                const data = await res.json();
+                
+                chatWindow.removeChild(loadingMsg);
+                
+                // Append AI response
+                const aiMsg = document.createElement('div');
+                aiMsg.style.cssText = 'color: #4ade80; background: rgba(74, 222, 128, 0.1); padding: 10px; border-radius: 8px; align-self: flex-start; max-width: 80%; white-space: pre-wrap;';
+                if (res.ok) {
+                    aiMsg.textContent = data.reply;
+                } else {
+                    aiMsg.textContent = 'Error: ' + (data.error || 'Failed to get response');
+                    aiMsg.style.color = '#ff6b6b';
+                    aiMsg.style.background = 'rgba(255, 107, 107, 0.1)';
+                }
+                chatWindow.appendChild(aiMsg);
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+                
+            } catch(e) {
+                chatWindow.removeChild(loadingMsg);
+                showToast('Failed to connect to AI', true);
+            }
+        }
+
+        if(chatSendBtn) chatSendBtn.addEventListener('click', handleAIChat);
+        if(chatInput) {
+            chatInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') handleAIChat();
+            });
+        }
 
         document.getElementById('adminSave').addEventListener('click', saveAllChanges);
 
