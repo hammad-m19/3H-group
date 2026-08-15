@@ -461,13 +461,16 @@
                         </button>
 
                         <!-- Chat Container -->
-                        <div id="aiChatContainer" style="position: absolute; bottom: 80px; right: 0; width: 350px; background: #1a1a2e; border: 1px solid #444; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: none; flex-direction: column; overflow: hidden;">
+                        <div id="aiChatContainer" style="position: absolute; bottom: 80px; right: 0; width: 350px; background: #1a1a2e; border: 1px solid #444; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: none; flex-direction: column; overflow: hidden; transition: width 0.3s ease;">
                             <div style="background: #E63946; padding: 15px; display: flex; justify-content: space-between; align-items: center;">
                                 <h3 style="margin: 0; color: white; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">🤖 AI HR Assistant</h3>
-                                <button id="aiChatCloseBtn" style="background: none; border: none; color: white; font-size: 1.2rem; cursor: pointer;">✕</button>
+                                <div>
+                                    <button id="aiChatExpandBtn" style="background: none; border: none; color: white; font-size: 1.3rem; cursor: pointer; margin-right: 12px;" title="Expand Chat">⛶</button>
+                                    <button id="aiChatCloseBtn" style="background: none; border: none; color: white; font-size: 1.2rem; cursor: pointer;" title="Close Chat">✕</button>
+                                </div>
                             </div>
                             
-                            <div id="ai-chat-window" style="height: 350px; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background: rgba(0,0,0,0.2);">
+                            <div id="ai-chat-window" style="height: 350px; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background: rgba(0,0,0,0.2); transition: height 0.3s ease;">
                                 <div style="color: #4ade80; background: rgba(74, 222, 128, 0.1); padding: 10px; border-radius: 8px; align-self: flex-start; max-width: 85%; font-size: 0.95rem; line-height: 1.4;">
                                     Hello! I'm your AI HR Assistant. You can ask me things like "Who is the best fit for this role?" or "Which candidates are located near New York?"
                                 </div>
@@ -485,11 +488,23 @@
                             <h3>Candidate Applications</h3>
                             <button id="deleteAllAppsBtn" class="btn-delete-project" style="padding:8px 15px;">🗑️ Delete All</button>
                         </div>
-                        <div style="margin-bottom: 20px;">
-                            <label style="color:var(--text-secondary); margin-right:10px;">Filter by Job:</label>
-                            <select id="appJobFilter" style="padding:8px; border-radius:6px; background:var(--bg-tertiary); color:white; border:1px solid #444; width:250px;">
-                                <option value="all">All Jobs</option>
-                            </select>
+                        <div style="margin-bottom: 20px; display: flex; gap: 20px; flex-wrap: wrap;">
+                            <div>
+                                <label style="color:var(--text-secondary); margin-right:10px;">Filter by Job:</label>
+                                <select id="appJobFilter" style="padding:8px; border-radius:6px; background:var(--bg-tertiary); color:white; border:1px solid #444; width:250px;">
+                                    <option value="all">All Jobs</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="color:var(--text-secondary); margin-right:10px;">AI Score Filter:</label>
+                                <select id="appScoreFilter" style="padding:8px; border-radius:6px; background:var(--bg-tertiary); color:white; border:1px solid #444; width:250px;">
+                                    <option value="all">All Scores</option>
+                                    <option value="high">High Match (80+)</option>
+                                    <option value="medium">Medium Match (50-79)</option>
+                                    <option value="low">Low Match (&lt;50)</option>
+                                    <option value="sort-desc">Sort: Highest to Lowest</option>
+                                </select>
+                            </div>
                         </div>
                         <div id="admin-applications-list" style="margin-top: 15px; display: flex; flex-direction: column; gap: 15px;">
                             <p style="color:var(--text-secondary);">Loading applications...</p>
@@ -564,13 +579,22 @@
         document.getElementById('appJobFilter').addEventListener('change', () => {
             renderAdminApplications();
         });
+        
+        const scoreFilter = document.getElementById('appScoreFilter');
+        if(scoreFilter) {
+            scoreFilter.addEventListener('change', () => {
+                renderAdminApplications();
+            });
+        }
 
         // AI Chatbot Handlers
         const chatInput = document.getElementById('aiChatInput');
         const chatSendBtn = document.getElementById('aiChatSendBtn');
         const chatToggleBtn = document.getElementById('aiChatToggleBtn');
         const chatCloseBtn = document.getElementById('aiChatCloseBtn');
+        const chatExpandBtn = document.getElementById('aiChatExpandBtn');
         const chatContainer = document.getElementById('aiChatContainer');
+        const chatWindow = document.getElementById('ai-chat-window');
 
         if (chatToggleBtn && chatContainer) {
             chatToggleBtn.addEventListener('click', () => {
@@ -581,6 +605,23 @@
         if (chatCloseBtn && chatContainer) {
             chatCloseBtn.addEventListener('click', () => {
                 chatContainer.style.display = 'none';
+            });
+        }
+        if (chatExpandBtn && chatContainer && chatWindow) {
+            let isExpanded = false;
+            chatExpandBtn.addEventListener('click', () => {
+                isExpanded = !isExpanded;
+                if (isExpanded) {
+                    chatContainer.style.width = '600px';
+                    chatWindow.style.height = '600px';
+                    chatExpandBtn.textContent = '🗗'; 
+                    chatExpandBtn.title = "Shrink Chat";
+                } else {
+                    chatContainer.style.width = '350px';
+                    chatWindow.style.height = '350px';
+                    chatExpandBtn.textContent = '⛶';
+                    chatExpandBtn.title = "Expand Chat";
+                }
             });
         }
 
@@ -1205,11 +1246,28 @@
     function renderAdminApplications() {
         const container = document.getElementById('admin-applications-list');
         const filterSelect = document.getElementById('appJobFilter');
-        const selectedJobId = filterSelect.value;
+        const scoreFilterSelect = document.getElementById('appScoreFilter');
+        
+        const selectedJobId = filterSelect ? filterSelect.value : 'all';
+        const selectedScoreFilter = scoreFilterSelect ? scoreFilterSelect.value : 'all';
         
         let appsToRender = currentApplications;
+        
+        // 1. Filter by Job
         if (selectedJobId !== 'all') {
-            appsToRender = currentApplications.filter(app => app.jobId && app.jobId._id === selectedJobId);
+            appsToRender = appsToRender.filter(app => app.jobId && app.jobId._id === selectedJobId);
+        }
+
+        // 2. Filter/Sort by AI Score
+        if (selectedScoreFilter === 'high') {
+            appsToRender = appsToRender.filter(app => app.aiScore >= 80);
+        } else if (selectedScoreFilter === 'medium') {
+            appsToRender = appsToRender.filter(app => app.aiScore >= 50 && app.aiScore < 80);
+        } else if (selectedScoreFilter === 'low') {
+            appsToRender = appsToRender.filter(app => app.aiScore < 50);
+        } else if (selectedScoreFilter === 'sort-desc') {
+            // Sort highest to lowest
+            appsToRender = appsToRender.slice().sort((a, b) => b.aiScore - a.aiScore);
         }
 
         if (appsToRender.length === 0) {
