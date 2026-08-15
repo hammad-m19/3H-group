@@ -453,17 +453,30 @@
 
                 <!-- APPLICATIONS TAB -->
                 <div class="admin-tab-content" id="tab-applications">
-                    <div class="admin-section" style="margin-bottom: 20px;">
-                        <h3>🤖 AI HR Assistant</h3>
-                        <p style="color:var(--text-secondary); font-size: 0.9rem; margin-bottom: 10px;">Ask the AI about the candidates matching your current job filter.</p>
-                        <div id="ai-chat-window" style="background: rgba(0,0,0,0.2); border: 1px solid #444; border-radius: 8px; height: 250px; overflow-y: auto; padding: 15px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 10px;">
-                            <div style="color: #4ade80; background: rgba(74, 222, 128, 0.1); padding: 10px; border-radius: 8px; align-self: flex-start; max-width: 80%;">
-                                Hello! I'm your AI HR Assistant. You can ask me things like "Who is the best fit for this role?" or "Which candidates are located near New York?"
+                    <!-- FLOATING AI CHAT WIDGET -->
+                    <div id="ai-chat-widget" style="position: fixed; bottom: 40px; right: 40px; z-index: 1000;">
+                        <!-- Chat Icon -->
+                        <button id="aiChatToggleBtn" style="width: 60px; height: 60px; border-radius: 50%; background: #E63946; color: white; border: none; font-size: 1.8rem; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                            💬
+                        </button>
+
+                        <!-- Chat Container -->
+                        <div id="aiChatContainer" style="position: absolute; bottom: 80px; right: 0; width: 350px; background: #1a1a2e; border: 1px solid #444; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: none; flex-direction: column; overflow: hidden;">
+                            <div style="background: #E63946; padding: 15px; display: flex; justify-content: space-between; align-items: center;">
+                                <h3 style="margin: 0; color: white; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">🤖 AI HR Assistant</h3>
+                                <button id="aiChatCloseBtn" style="background: none; border: none; color: white; font-size: 1.2rem; cursor: pointer;">✕</button>
                             </div>
-                        </div>
-                        <div style="display: flex; gap: 10px;">
-                            <input type="text" id="aiChatInput" placeholder="Ask a question..." style="flex: 1; padding: 10px; border-radius: 8px; background: var(--bg-tertiary); color: white; border: 1px solid #444;">
-                            <button id="aiChatSendBtn" class="btn-add-project" style="width: auto; padding: 0 20px;">Send</button>
+                            
+                            <div id="ai-chat-window" style="height: 350px; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background: rgba(0,0,0,0.2);">
+                                <div style="color: #4ade80; background: rgba(74, 222, 128, 0.1); padding: 10px; border-radius: 8px; align-self: flex-start; max-width: 85%; font-size: 0.95rem; line-height: 1.4;">
+                                    Hello! I'm your AI HR Assistant. You can ask me things like "Who is the best fit for this role?" or "Which candidates are located near New York?"
+                                </div>
+                            </div>
+                            
+                            <div style="padding: 15px; background: #1a1a2e; border-top: 1px solid #444; display: flex; gap: 10px;">
+                                <input type="text" id="aiChatInput" placeholder="Ask a question..." style="flex: 1; padding: 10px; border-radius: 8px; background: rgba(255,255,255,0.05); color: white; border: 1px solid #444; font-family: inherit;">
+                                <button id="aiChatSendBtn" class="btn-add-project" style="width: auto; padding: 0 15px;">Send</button>
+                            </div>
                         </div>
                     </div>
 
@@ -555,6 +568,22 @@
         // AI Chatbot Handlers
         const chatInput = document.getElementById('aiChatInput');
         const chatSendBtn = document.getElementById('aiChatSendBtn');
+        const chatToggleBtn = document.getElementById('aiChatToggleBtn');
+        const chatCloseBtn = document.getElementById('aiChatCloseBtn');
+        const chatContainer = document.getElementById('aiChatContainer');
+
+        if (chatToggleBtn && chatContainer) {
+            chatToggleBtn.addEventListener('click', () => {
+                chatContainer.style.display = chatContainer.style.display === 'none' || chatContainer.style.display === '' ? 'flex' : 'none';
+                if (chatContainer.style.display === 'flex') chatInput.focus();
+            });
+        }
+        if (chatCloseBtn && chatContainer) {
+            chatCloseBtn.addEventListener('click', () => {
+                chatContainer.style.display = 'none';
+            });
+        }
+
         
         async function handleAIChat() {
             const query = chatInput.value.trim();
