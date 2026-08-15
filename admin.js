@@ -454,9 +454,9 @@
                 <!-- APPLICATIONS TAB -->
                 <div class="admin-tab-content" id="tab-applications">
                     <!-- FLOATING AI CHAT WIDGET -->
-                    <div id="ai-chat-widget" style="position: fixed; bottom: 40px; right: 40px; z-index: 1000;">
+                    <div id="ai-chat-widget" style="position: fixed; bottom: 50px; right: 50px; z-index: 999999;">
                         <!-- Chat Icon -->
-                        <button id="aiChatToggleBtn" style="width: 60px; height: 60px; border-radius: 50%; background: #E63946; color: white; border: none; font-size: 1.8rem; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                        <button id="aiChatToggleBtn" style="width: 70px; height: 70px; border-radius: 50%; background: #4ade80; color: #000; border: 3px solid #fff; font-size: 2.2rem; cursor: pointer; box-shadow: 0 8px 25px rgba(74, 222, 128, 0.6); display: flex; align-items: center; justify-content: center; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
                             💬
                         </button>
 
