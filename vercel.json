@@ -19,6 +19,10 @@
     {
       "src": "**/*.js",
       "use": "@vercel/static"
+    },
+    {
+      "src": "images/*",
+      "use": "@vercel/static"
     }
   ],
   "rewrites": [
