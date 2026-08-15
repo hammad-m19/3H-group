@@ -1222,7 +1222,7 @@
                 <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                     <div>
                         <h3 style="color:var(--primary-color); margin-bottom:5px;">${app.name}</h3>
-                        <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:10px;">${app.email} | Applied for: <strong>${app.jobId ? app.jobId.title : 'Deleted Job'}</strong></p>
+                        <p style="color:sandybrown; font-size:0.9rem; margin-bottom:10px;">${app.email} | Applied for: <strong>${app.jobId ? app.jobId.title : 'Deleted Job'}</strong></p>
                         <a href="/api/applications/${app._id}/resume" target="_blank" class="btn" style="background:#3b82f6; color:white; padding:5px 12px; border-radius:6px; font-size:0.85rem; text-decoration:none; display:inline-block;">📄 View CV</a>
                     </div>
                     <div style="background:${app.aiScore >= 80 ? '#4ade8020' : (app.aiScore >= 50 ? '#facc1520' : '#f8717120')}; 
@@ -1234,12 +1234,12 @@
                 
                 <div style="margin-top: 15px; background:var(--bg-tertiary); padding:15px; border-radius:8px;">
                     <h4 style="color:white; margin-bottom:10px; font-size:0.9rem;">AI Rationale</h4>
-                    <p style="color:var(--text-secondary); line-height:1.5;">${app.aiRationale}</p>
+                    <p style="color:sandybrown; line-height:1.5;">${app.aiRationale}</p>
                 </div>
 
                 <div style="margin-top: 15px; background:var(--bg-tertiary); padding:15px; border-radius:8px;">
                     <h4 style="color:white; margin-bottom:10px; font-size:0.9rem;">Custom Answers</h4>
-                    <p style="color:var(--text-secondary); line-height:1.5; white-space:pre-wrap;">${app.answers}</p>
+                    <p style="color:sandybrown; line-height:1.5; white-space:pre-wrap;">${app.answers}</p>
                 </div>
             </div>
         `).join('');
