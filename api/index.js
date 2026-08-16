@@ -352,7 +352,7 @@ For any queries or assistance, please contact:
 ${numbers}`;
 
             const mailOptions = {
-                from: \`"3H Group HR" <\${process.env.EMAIL_USER}>\`,
+                from: `"3H Group HR" <${process.env.EMAIL_USER}>`,
                 to: app.email,
                 subject: 'Interview Invitation - 3H Group',
                 text: mailText
