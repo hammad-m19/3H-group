@@ -10,6 +10,7 @@ global.DOMMatrix = class DOMMatrix {};
 global.ImageData = class ImageData {};
 global.Path2D = class Path2D {};
 const pdfParse = require('pdf-parse');
+const nodemailer = require('nodemailer');
 
 const Job = require('./models/Job');
 const Application = require('./models/Application');
@@ -264,6 +265,106 @@ Provide a helpful, well-formatted response (using markdown if needed) to answer 
         res.json({ reply: response.text });
     } catch (error) {
         console.error("Chat API Error:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Admin: Send Interview Email
+app.post('/api/send-interview-email', async (req, res) => {
+    try {
+        const { applicationIds, date, time, numbers } = req.body;
+        if (!applicationIds || applicationIds.length === 0 || !date || !time || !numbers) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        const applications = await Application.find({ _id: { $in: applicationIds } }).populate('jobId');
+        if (!applications || applications.length === 0) {
+            return res.status(404).json({ error: 'Applications not found' });
+        }
+
+        if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+            return res.status(500).json({ error: 'Email configuration is missing on server' });
+        }
+
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS
+            }
+        });
+
+        const formatDate = (dateString) => {
+            const d = new Date(dateString);
+            const nth = (d) => {
+                if (d > 3 && d < 21) return 'th';
+                switch (d % 10) {
+                    case 1:  return "st";
+                    case 2:  return "nd";
+                    case 3:  return "rd";
+                    default: return "th";
+                }
+            };
+            const dateNum = d.getDate();
+            const month = d.toLocaleString('default', { month: 'long' });
+            const year = d.getFullYear();
+            const dayName = d.toLocaleString('default', { weekday: 'long' });
+            return `${dayName}, ${dateNum}${nth(dateNum)} ${month} ${year}`;
+        };
+
+        const formattedDate = formatDate(date);
+
+        // Convert 24h time string (e.g. "14:30") to 12h format ("02:30 PM")
+        const formatTime = (timeStr) => {
+            const [h, m] = timeStr.split(':');
+            const hNum = parseInt(h, 10);
+            const ampm = hNum >= 12 ? 'PM' : 'AM';
+            const h12 = hNum % 12 || 12;
+            return `${h12}:${m} ${ampm}`;
+        };
+        const formattedTime = formatTime(time);
+
+        let emailsSent = 0;
+
+        for (const app of applications) {
+            const mailText = `Dear Candidate,
+
+We are pleased to inform you that you have been shortlisted for an interview with 3H Group.
+
+Your interview is scheduled for ${formattedDate}, at ${formattedTime} at the 3H Group Office.
+
+About 3H Group:
+3H Group comprises 3H Contractors, 3H Consultants, and 3H Marketing. We are committed to excellence in construction, engineering consultancy, and business solutions, while providing a professional environment that promotes innovation, integrity, professional development, and career growth.
+
+Please bring the following documents:
+• Updated CV
+• Original CNIC
+• Copies of educational and professional certificates, if available
+
+Kindly arrive 10–15 minutes before your scheduled interview to complete the necessary formalities.
+
+We look forward to meeting you and discussing the opportunity with you.
+
+Human Resources Department
+3H Group
+
+For any queries or assistance, please contact:
+${numbers}`;
+
+            const mailOptions = {
+                from: \`"3H Group HR" <\${process.env.EMAIL_USER}>\`,
+                to: app.email,
+                subject: 'Interview Invitation - 3H Group',
+                text: mailText
+            };
+
+            await transporter.sendMail(mailOptions);
+            emailsSent++;
+        }
+
+        res.json({ success: true, count: emailsSent });
+    } catch (error) {
+        console.error("Email API Error:", error);
         res.status(500).json({ error: error.message });
     }
 });

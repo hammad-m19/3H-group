@@ -486,7 +486,10 @@
                     <div class="admin-section">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                             <h3>Candidate Applications</h3>
-                            <button id="deleteAllAppsBtn" class="btn-delete-project" style="padding:8px 15px;">🗑️ Delete All</button>
+                            <div>
+                                <button id="sendEmailModalBtn" class="btn" style="background:#3b82f6; color:white; border:none; padding:8px 15px; border-radius:6px; cursor:pointer; margin-right:10px;">📧 Send Interview Mail</button>
+                                <button id="deleteAllAppsBtn" class="btn-delete-project" style="padding:8px 15px;">🗑️ Delete All</button>
+                            </div>
                         </div>
                         <div style="margin-bottom: 20px; display: flex; gap: 20px; flex-wrap: wrap;">
                             <div>
@@ -512,6 +515,30 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Email Modal -->
+            <div id="emailModal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:#1a1a2e; border:1px solid #444; padding:20px; border-radius:12px; z-index:100000; width:400px; box-shadow:0 10px 30px rgba(0,0,0,0.8);">
+                <h3 style="color:white; margin-top:0;">Send Interview Email</h3>
+                <div style="margin-bottom:15px;">
+                    <label style="color:var(--text-secondary); display:block; margin-bottom:5px;">Date</label>
+                    <input type="date" id="emailDate" style="width:100%; padding:8px; border-radius:6px; background:var(--bg-tertiary); color:white; border:1px solid #444;" />
+                </div>
+                <div style="margin-bottom:15px;">
+                    <label style="color:var(--text-secondary); display:block; margin-bottom:5px;">Time</label>
+                    <input type="time" id="emailTime" style="width:100%; padding:8px; border-radius:6px; background:var(--bg-tertiary); color:white; border:1px solid #444;" />
+                </div>
+                <div style="margin-bottom:15px;">
+                    <label style="color:var(--text-secondary); display:block; margin-bottom:5px;">Contact Numbers</label>
+                    <textarea id="emailNumbers" rows="3" style="width:100%; padding:8px; border-radius:6px; background:var(--bg-tertiary); color:white; border:1px solid #444; font-family:inherit; resize:vertical;">Mr. Hammad: 0309-6699111
+Mian Mahmood: 0321-6699123</textarea>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:10px;">
+                    <button id="cancelEmailBtn" style="background:#444; color:white; border:none; padding:8px 15px; border-radius:6px; cursor:pointer;">Cancel</button>
+                    <button id="sendEmailConfirmBtn" style="background:#3b82f6; color:white; border:none; padding:8px 15px; border-radius:6px; cursor:pointer;">Send Email</button>
+                </div>
+            </div>
+            <div id="emailModalOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:99999;"></div>
+
         `;
         document.body.appendChild(overlay);
 
@@ -573,6 +600,66 @@
                 }
             } catch(e) {
                 showToast('Error deleting applications', true);
+            }
+        });
+
+        // Email Modal Handlers
+        const emailModal = document.getElementById('emailModal');
+        const emailModalOverlay = document.getElementById('emailModalOverlay');
+
+        document.getElementById('sendEmailModalBtn').addEventListener('click', () => {
+            const checkedBoxes = document.querySelectorAll('.app-checkbox:checked');
+            if (checkedBoxes.length === 0) {
+                return showToast('Please select at least one application.', true);
+            }
+            emailModal.style.display = 'block';
+            emailModalOverlay.style.display = 'block';
+        });
+
+        document.getElementById('cancelEmailBtn').addEventListener('click', () => {
+            emailModal.style.display = 'none';
+            emailModalOverlay.style.display = 'none';
+        });
+
+        document.getElementById('sendEmailConfirmBtn').addEventListener('click', async () => {
+            const date = document.getElementById('emailDate').value;
+            const time = document.getElementById('emailTime').value;
+            const numbers = document.getElementById('emailNumbers').value;
+
+            if (!date || !time || !numbers) {
+                return showToast('Please fill out all fields.', true);
+            }
+
+            const checkedBoxes = document.querySelectorAll('.app-checkbox:checked');
+            const applicationIds = Array.from(checkedBoxes).map(cb => cb.value);
+
+            const btn = document.getElementById('sendEmailConfirmBtn');
+            const originalText = btn.innerText;
+            btn.innerText = 'Sending...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/send-interview-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ applicationIds, date, time, numbers })
+                });
+
+                if (res.ok) {
+                    showToast('Interview emails sent successfully!');
+                    emailModal.style.display = 'none';
+                    emailModalOverlay.style.display = 'none';
+                    // Uncheck boxes
+                    checkedBoxes.forEach(cb => cb.checked = false);
+                } else {
+                    const err = await res.json();
+                    showToast(err.error || 'Failed to send emails', true);
+                }
+            } catch(e) {
+                showToast('Error sending emails', true);
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
             }
         });
 
@@ -1276,28 +1363,33 @@
         }
         
         container.innerHTML = appsToRender.map(app => `
-            <div style="background:var(--bg-primary); padding:20px; border-radius:12px; border:1px solid #333;">
-                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                    <div>
-                        <h3 style="color:var(--primary-color); margin-bottom:5px;">${app.name}</h3>
-                        <p style="color:sandybrown; font-size:0.9rem; margin-bottom:10px;">${app.email} | Applied for: <strong>${app.jobId ? app.jobId.title : 'Deleted Job'}</strong></p>
-                        <a href="/api/applications/${app._id}/resume" target="_blank" class="btn" style="background:#3b82f6; color:white; padding:5px 12px; border-radius:6px; font-size:0.85rem; text-decoration:none; display:inline-block;">📄 View CV</a>
-                    </div>
-                    <div style="background:${app.aiScore >= 80 ? '#4ade8020' : (app.aiScore >= 50 ? '#facc1520' : '#f8717120')}; 
-                                color:${app.aiScore >= 80 ? '#4ade80' : (app.aiScore >= 50 ? '#facc15' : '#f87171')};
-                                padding: 8px 15px; border-radius: 20px; font-weight:bold; font-size: 1.2rem;">
-                        AI Score: ${app.aiScore}/100
-                    </div>
+            <div style="background:var(--bg-primary); padding:20px; border-radius:12px; border:1px solid #333; display: flex; gap: 15px;">
+                <div>
+                    <input type="checkbox" class="app-checkbox" value="${app._id}" style="margin-top: 5px; transform: scale(1.5); cursor: pointer;" />
                 </div>
-                
-                <div style="margin-top: 15px; background:var(--bg-tertiary); padding:15px; border-radius:8px;">
-                    <h4 style="color:white; margin-bottom:10px; font-size:0.9rem;">AI Rationale</h4>
-                    <p style="color:sandybrown; line-height:1.5;">${app.aiRationale}</p>
-                </div>
+                <div style="flex: 1;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <div>
+                            <h3 style="color:var(--primary-color); margin-bottom:5px;">${app.name}</h3>
+                            <p style="color:sandybrown; font-size:0.9rem; margin-bottom:10px;">${app.email} | Applied for: <strong>${app.jobId ? app.jobId.title : 'Deleted Job'}</strong></p>
+                            <a href="/api/applications/${app._id}/resume" target="_blank" class="btn" style="background:#3b82f6; color:white; padding:5px 12px; border-radius:6px; font-size:0.85rem; text-decoration:none; display:inline-block;">📄 View CV</a>
+                        </div>
+                        <div style="background:${app.aiScore >= 80 ? '#4ade8020' : (app.aiScore >= 50 ? '#facc1520' : '#f8717120')}; 
+                                    color:${app.aiScore >= 80 ? '#4ade80' : (app.aiScore >= 50 ? '#facc15' : '#f87171')};
+                                    padding: 8px 15px; border-radius: 20px; font-weight:bold; font-size: 1.2rem;">
+                            AI Score: ${app.aiScore}/100
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 15px; background:var(--bg-tertiary); padding:15px; border-radius:8px;">
+                        <h4 style="color:white; margin-bottom:10px; font-size:0.9rem;">AI Rationale</h4>
+                        <p style="color:sandybrown; line-height:1.5;">${app.aiRationale}</p>
+                    </div>
 
-                <div style="margin-top: 15px; background:var(--bg-tertiary); padding:15px; border-radius:8px;">
-                    <h4 style="color:white; margin-bottom:10px; font-size:0.9rem;">Custom Answers</h4>
-                    <p style="color:sandybrown; line-height:1.5; white-space:pre-wrap;">${app.answers}</p>
+                    <div style="margin-top: 15px; background:var(--bg-tertiary); padding:15px; border-radius:8px;">
+                        <h4 style="color:white; margin-bottom:10px; font-size:0.9rem;">Custom Answers</h4>
+                        <p style="color:sandybrown; line-height:1.5; white-space:pre-wrap;">${app.answers}</p>
+                    </div>
                 </div>
             </div>
         `).join('');
