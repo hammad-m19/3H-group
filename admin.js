@@ -488,7 +488,8 @@
                             <h3>Candidate Applications</h3>
                             <div>
                                 <button id="sendEmailModalBtn" class="btn" style="background:#3b82f6; color:white; border:none; padding:8px 15px; border-radius:6px; cursor:pointer; margin-right:10px;">📧 Send Interview Mail</button>
-                                <button id="deleteAllAppsBtn" class="btn-delete-project" style="padding:8px 15px;">🗑️ Delete All</button>
+                                <button id="selectAllAppsBtn" class="btn" style="background:#4b5563; color:white; border:none; padding:8px 15px; border-radius:6px; cursor:pointer; margin-right:10px;">☑️ Select All</button>
+                                <button id="deleteSelectedAppsBtn" class="btn-delete-project" style="padding:8px 15px;">🗑️ Delete Selected</button>
                             </div>
                         </div>
                         <div style="margin-bottom: 20px; display: flex; gap: 20px; flex-wrap: wrap;">
@@ -505,7 +506,9 @@
                                     <option value="high">High Match (80+)</option>
                                     <option value="medium">Medium Match (50-79)</option>
                                     <option value="low">Low Match (&lt;50)</option>
+                                    <option value="zero">Equal to 0</option>
                                     <option value="sort-desc">Sort: Highest to Lowest</option>
+                                    <option value="sort-asc">Sort: Lowest to Highest</option>
                                 </select>
                             </div>
                         </div>
@@ -588,12 +591,33 @@ Mian Mahmood: 0321-6699123</textarea>
             }
         });
 
-        document.getElementById('deleteAllAppsBtn').addEventListener('click', async () => {
-            if (!confirm('Are you sure you want to delete ALL candidate applications and scores? This cannot be undone.')) return;
+        document.getElementById('selectAllAppsBtn').addEventListener('click', () => {
+            const checkboxes = document.querySelectorAll('.app-checkbox');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            
+            checkboxes.forEach(cb => {
+                cb.checked = !allChecked; // Toggle all on or all off based on current state
+            });
+        });
+
+        document.getElementById('deleteSelectedAppsBtn').addEventListener('click', async () => {
+            const checkedBoxes = document.querySelectorAll('.app-checkbox:checked');
+            if (checkedBoxes.length === 0) {
+                return showToast('Please select at least one application to delete.', true);
+            }
+
+            if (!confirm(`Are you sure you want to delete the ${checkedBoxes.length} selected application(s)? This cannot be undone.`)) return;
+            
+            const applicationIds = Array.from(checkedBoxes).map(cb => cb.value);
+
             try {
-                const res = await fetch('/api/applications', { method: 'DELETE' });
+                const res = await fetch('/api/applications/bulk-delete', { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ applicationIds })
+                });
                 if (res.ok) {
-                    showToast('All applications deleted successfully!');
+                    showToast('Selected applications deleted successfully!');
                     fetchAdminApplications();
                 } else {
                     showToast('Failed to delete applications', true);
@@ -1351,10 +1375,15 @@ Mian Mahmood: 0321-6699123</textarea>
         } else if (selectedScoreFilter === 'medium') {
             appsToRender = appsToRender.filter(app => app.aiScore >= 50 && app.aiScore < 80);
         } else if (selectedScoreFilter === 'low') {
-            appsToRender = appsToRender.filter(app => app.aiScore < 50);
+            appsToRender = appsToRender.filter(app => app.aiScore < 50 && app.aiScore > 0);
+        } else if (selectedScoreFilter === 'zero') {
+            appsToRender = appsToRender.filter(app => app.aiScore === 0);
         } else if (selectedScoreFilter === 'sort-desc') {
             // Sort highest to lowest
             appsToRender = appsToRender.slice().sort((a, b) => b.aiScore - a.aiScore);
+        } else if (selectedScoreFilter === 'sort-asc') {
+            // Sort lowest to highest
+            appsToRender = appsToRender.slice().sort((a, b) => a.aiScore - b.aiScore);
         }
 
         if (appsToRender.length === 0) {

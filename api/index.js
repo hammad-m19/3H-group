@@ -222,11 +222,25 @@ app.get('/api/applications', async (req, res) => {
     }
 });
 
-// Delete all applications
+// Delete all applications (kept for backward compatibility if needed)
 app.delete('/api/applications', async (req, res) => {
     try {
         await Application.deleteMany({});
         res.json({ message: 'All applications deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Delete selected applications
+app.post('/api/applications/bulk-delete', async (req, res) => {
+    try {
+        const { applicationIds } = req.body;
+        if (!applicationIds || !Array.isArray(applicationIds)) {
+            return res.status(400).json({ error: "Invalid application IDs" });
+        }
+        await Application.deleteMany({ _id: { $in: applicationIds } });
+        res.json({ message: 'Selected applications deleted successfully' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
