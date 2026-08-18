@@ -19,11 +19,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// In Vercel, serve static files via vercel.json, but for local dev we can serve the public directory
-if (process.env.NODE_ENV !== 'production') {
-    const path = require('path');
-    app.use(express.static(path.join(__dirname, '..')));
-}
+// Serve static frontend files (HTML, CSS, JS, Images)
+const path = require('path');
+app.use(express.static(path.join(__dirname, '..')));
 
 // Memory storage for Vercel compatibility
 const upload = multer({
@@ -94,25 +92,35 @@ app.delete('/api/jobs/:id', async (req, res) => {
 app.post('/api/apply', upload.single('resume'), async (req, res) => {
     try {
         const { jobId, name, email, answers } = req.body;
-        if (!req.file) return res.status(400).json({ error: "Resume PDF is required" });
+        if (!req.file) return res.status(400).json({ error: "Resume file is required" });
 
         const job = await Job.findById(jobId);
         if (!job) return res.status(404).json({ error: "Job not found" });
 
-        // Parse PDF locally to save time and API tokens
-        let resumeText = "Could not read resume text.";
-        try {
-            const pdfData = await pdfParse(req.file.buffer);
-            resumeText = pdfData.text;
-        } catch (pdfErr) {
-            console.error("PDF Parsing Error:", pdfErr);
+        let resumeText = "";
+        
+        // Detect image-based files to save tokens
+        if (!req.file.mimetype.startsWith('image/')) {
+            // Parse PDF locally to save time and API tokens
+            try {
+                const pdfData = await pdfParse(req.file.buffer);
+                if (pdfData.text && pdfData.text.trim().length > 50) {
+                    resumeText = pdfData.text;
+                }
+            } catch (pdfErr) {
+                console.error("PDF Parsing Error:", pdfErr);
+            }
         }
 
         // Gemini AI Evaluation
         let aiScore = 0;
         let aiRationale = "AI evaluation failed.";
 
-        if (process.env.GEMINI_API_KEY) {
+        if (!resumeText) {
+            // Token-Saving Fallback: Skip AI if image or image-based PDF
+            aiScore = 0;
+            aiRationale = "Image-based CV detected. AI evaluation skipped to conserve API tokens. Please review manually.";
+        } else if (process.env.GEMINI_API_KEY) {
             let attempt = 0;
             const maxAttempts = 3;
             let success = false;
@@ -270,6 +278,13 @@ app.post('/api/applications/:id/evaluate', async (req, res) => {
 
         if (!process.env.GEMINI_API_KEY) {
             return res.status(500).json({ error: "GEMINI_API_KEY is not set" });
+        }
+
+        if (!appDoc.resumeText || appDoc.resumeText.trim().length < 50) {
+            appDoc.aiScore = 0;
+            appDoc.aiRationale = "Image-based CV detected. AI evaluation skipped to conserve API tokens. Please review manually.";
+            await appDoc.save();
+            return res.json({ message: "AI Evaluation skipped (Image-based CV)", aiScore: appDoc.aiScore, aiRationale: appDoc.aiRationale });
         }
 
         let attempt = 0;
