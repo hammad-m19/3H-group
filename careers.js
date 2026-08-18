@@ -91,6 +91,8 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('jobId', document.getElementById('jobId').value);
         formData.append('name', document.getElementById('appName').value);
         formData.append('email', document.getElementById('appEmail').value);
+        formData.append('phone', document.getElementById('appPhone').value);
+        formData.append('address', document.getElementById('appAddress').value);
         formData.append('answers', document.getElementById('appAnswers').value);
         formData.append('resume', document.getElementById('appResume').files[0]);
 

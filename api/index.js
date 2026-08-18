@@ -91,7 +91,7 @@ app.delete('/api/jobs/:id', async (req, res) => {
 // Submit an application
 app.post('/api/apply', upload.single('resume'), async (req, res) => {
     try {
-        const { jobId, name, email, answers } = req.body;
+        const { jobId, name, email, phone, address, answers } = req.body;
         if (!req.file) return res.status(400).json({ error: "Resume file is required" });
 
         const job = await Job.findById(jobId);
@@ -137,6 +137,8 @@ Job Title: ${job.title}
 Job Description: ${job.description}
 
 Candidate Name: ${name}
+Candidate Phone: ${phone}
+Candidate Address: ${address}
 Candidate Answers: ${answers}
 
 Candidate Resume Text:
@@ -195,6 +197,8 @@ ${resumeText}
             jobId,
             name,
             email,
+            phone,
+            address,
             answers,
             resumeText,
             resumeBuffer: req.file.buffer, // Optional: storing the PDF buffer

@@ -1532,7 +1532,8 @@ Mian Mahmood: 0321-6699123</textarea>
                                 <button class="btn custom-mail-btn" data-email="${app.email}" data-name="${app.name}" style="background:transparent; color:#3b82f6; border:1px solid #3b82f6; padding:2px 8px; border-radius:4px; font-size:0.8rem; cursor:pointer;" title="Mail ${app.name}">📧 Mail</button>
                                 <button class="star-btn" data-id="${app._id}" style="background:transparent; border:none; cursor:pointer; font-size:1.4rem; padding:0; color:${isStarred ? '#fbbf24' : '#4b5563'}; line-height: 1;" title="${isStarred ? 'Remove from favorites' : 'Mark as favorite'}">${isStarred ? '★' : '☆'}</button>
                             </div>
-                            <p style="color:sandybrown; font-size:0.9rem; margin-bottom:10px;">${app.email} | Applied for: <strong>${app.jobId ? app.jobId.title : 'Deleted Job'}</strong></p>
+                            <p style="color:sandybrown; font-size:0.9rem; margin-bottom:5px;">${app.email} | Applied for: <strong>${app.jobId ? app.jobId.title : 'Deleted Job'}</strong></p>
+                            <p style="color:sandybrown; font-size:0.85rem; margin-bottom:10px;">📞 ${app.phone || 'N/A'} | 📍 ${app.address || 'N/A'}</p>
                             <a href="/api/applications/${app._id}/resume" target="_blank" class="btn" style="background:#3b82f6; color:white; padding:5px 12px; border-radius:6px; font-size:0.85rem; text-decoration:none; display:inline-block;">📄 View CV</a>
                             ${(app.aiRationale && (app.aiRationale.startsWith('AI evaluation failed') || app.aiRationale.startsWith('AI evaluation paused'))) ? 
                                 `<button class="retry-ai-btn btn" data-id="${app._id}" style="background:#8b5cf6; color:white; padding:5px 12px; border-radius:6px; font-size:0.85rem; border:none; cursor:pointer; margin-left:10px;">🔄 Retry AI</button>` : ''}

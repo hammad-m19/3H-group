@@ -4,6 +4,8 @@ const applicationSchema = new mongoose.Schema({
     jobId: { type: mongoose.Schema.Types.ObjectId, ref: 'Job', required: true },
     name: { type: String, required: true },
     email: { type: String, required: true },
+    phone: { type: String },
+    address: { type: String },
     answers: { type: String }, // Custom questions answers
     resumeText: { type: String }, // Extracted text from PDF
     resumeBuffer: { type: Buffer }, // Store original PDF in DB if we want, or skip it to save space
