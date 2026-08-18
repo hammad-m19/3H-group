@@ -6,9 +6,9 @@ const { GoogleGenAI } = require('@google/genai');
 const cors = require('cors');
 
 // Mock DOM objects for Vercel / serverless environment to prevent pdf-parse from crashing
-global.DOMMatrix = class DOMMatrix {};
-global.ImageData = class ImageData {};
-global.Path2D = class Path2D {};
+global.DOMMatrix = class DOMMatrix { };
+global.ImageData = class ImageData { };
+global.Path2D = class Path2D { };
 const pdfParse = require('pdf-parse');
 const nodemailer = require('nodemailer');
 
@@ -98,7 +98,7 @@ app.post('/api/apply', upload.single('resume'), async (req, res) => {
         if (!job) return res.status(404).json({ error: "Job not found" });
 
         let resumeText = "";
-        
+
         // Detect image-based files to save tokens
         if (!req.file.mimetype.startsWith('image/')) {
             // Parse PDF locally to save time and API tokens
@@ -124,9 +124,9 @@ app.post('/api/apply', upload.single('resume'), async (req, res) => {
             let attempt = 0;
             const maxAttempts = 3;
             let success = false;
-            
+
             const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-            
+
             const prompt = `
 You are an expert HR recruiter. Please evaluate the following candidate for the job provided.
 Return ONLY a raw JSON object (no markdown formatting, no backticks, just the json) with two keys:
@@ -174,7 +174,7 @@ ${resumeText}
 
                     attempt++;
                     console.error(`AI Evaluation error (attempt ${attempt}):`, aiErr);
-                    
+
                     if (attempt >= maxAttempts) {
                         if (errorMsg.includes("429") || errorMsg.includes("quota") || errorMsg.includes("RESOURCE_EXHAUSTED")) {
                             aiRationale = "AI evaluation paused: API rate limit exceeded. Please try again later.";
@@ -338,7 +338,7 @@ ${appDoc.resumeText}
 
                 attempt++;
                 console.error(`AI Evaluation error on retry (attempt ${attempt}):`, aiErr);
-                
+
                 if (attempt >= maxAttempts) {
                     if (errorMsg.includes("429") || errorMsg.includes("quota") || errorMsg.includes("RESOURCE_EXHAUSTED")) {
                         aiRationale = "AI evaluation paused: API rate limit exceeded. Please try again later.";
@@ -392,7 +392,7 @@ app.post('/api/admin/chat', async (req, res) => {
         }));
 
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        
+
         const prompt = `
 You are an expert HR Assistant for 3H GROUP Construction Company. 
 Your task is to answer the admin's query based on the following candidate data.
@@ -409,7 +409,7 @@ Provide a helpful, well-formatted response (using markdown if needed) to answer 
         const maxAttempts = 3;
         let success = false;
         let replyText = "";
-        
+
         while (attempt < maxAttempts && !success) {
             try {
                 const response = await ai.models.generateContent({
@@ -431,7 +431,7 @@ Provide a helpful, well-formatted response (using markdown if needed) to answer 
 
                 attempt++;
                 console.error(`Chat API Error (attempt ${attempt}):`, aiErr);
-                
+
                 if (attempt >= maxAttempts) {
                     if (errorMsg.includes("429") || errorMsg.includes("quota") || errorMsg.includes("RESOURCE_EXHAUSTED")) {
                         throw new Error("Chat unavailable: API rate limit exceeded. Please try again later or upgrade your plan.");
@@ -484,9 +484,9 @@ app.post('/api/send-interview-email', async (req, res) => {
             const nth = (d) => {
                 if (d > 3 && d < 21) return 'th';
                 switch (d % 10) {
-                    case 1:  return "st";
-                    case 2:  return "nd";
-                    case 3:  return "rd";
+                    case 1: return "st";
+                    case 2: return "nd";
+                    case 3: return "rd";
                     default: return "th";
                 }
             };
@@ -562,3 +562,4 @@ if (require.main === module) {
         console.log(`Server running on port ${port}`);
     });
 }
+

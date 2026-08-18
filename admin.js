@@ -495,13 +495,13 @@
                         <div style="margin-bottom: 20px; display: flex; gap: 20px; flex-wrap: wrap;">
                             <div>
                                 <label style="color:var(--text-secondary); margin-right:10px;">Filter by Job:</label>
-                                <select id="appJobFilter" style="padding:8px; border-radius:6px; background:var(--bg-tertiary); color:white; border:1px solid #444; width:250px;">
+                                <select id="appJobFilter" style="padding:8px; border-radius:6px; background:var(--bg-tertiary); color:white; border:1px solid #444; width:200px;">
                                     <option value="all">All Jobs</option>
                                 </select>
                             </div>
                             <div>
                                 <label style="color:var(--text-secondary); margin-right:10px;">AI Score Filter:</label>
-                                <select id="appScoreFilter" style="padding:8px; border-radius:6px; background:var(--bg-tertiary); color:white; border:1px solid #444; width:250px;">
+                                <select id="appScoreFilter" style="padding:8px; border-radius:6px; background:var(--bg-tertiary); color:white; border:1px solid #444; width:200px;">
                                     <option value="all">All Scores</option>
                                     <option value="high">High Match (80+)</option>
                                     <option value="medium">Medium Match (50-79)</option>
@@ -509,6 +509,13 @@
                                     <option value="zero">Equal to 0</option>
                                     <option value="sort-desc">Sort: Highest to Lowest</option>
                                     <option value="sort-asc">Sort: Lowest to Highest</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="color:var(--text-secondary); margin-right:10px;">Favorites:</label>
+                                <select id="appStarredFilter" style="padding:8px; border-radius:6px; background:var(--bg-tertiary); color:white; border:1px solid #444; width:150px;">
+                                    <option value="all">All</option>
+                                    <option value="starred">Starred Only</option>
                                 </select>
                             </div>
                         </div>
@@ -694,6 +701,13 @@ Mian Mahmood: 0321-6699123</textarea>
         const scoreFilter = document.getElementById('appScoreFilter');
         if(scoreFilter) {
             scoreFilter.addEventListener('change', () => {
+                renderAdminApplications();
+            });
+        }
+
+        const starredFilter = document.getElementById('appStarredFilter');
+        if(starredFilter) {
+            starredFilter.addEventListener('change', () => {
                 renderAdminApplications();
             });
         }
@@ -1359,10 +1373,19 @@ Mian Mahmood: 0321-6699123</textarea>
         const filterSelect = document.getElementById('appJobFilter');
         const scoreFilterSelect = document.getElementById('appScoreFilter');
         
+        const starredFilterSelect = document.getElementById('appStarredFilter');
+        
         const selectedJobId = filterSelect ? filterSelect.value : 'all';
         const selectedScoreFilter = scoreFilterSelect ? scoreFilterSelect.value : 'all';
+        const selectedStarredFilter = starredFilterSelect ? starredFilterSelect.value : 'all';
         
+        const starredApps = JSON.parse(localStorage.getItem('3h_starred_apps') || '[]');
+
         let appsToRender = currentApplications;
+        
+        if (selectedStarredFilter === 'starred') {
+            appsToRender = appsToRender.filter(app => starredApps.includes(app._id));
+        }
         
         // 1. Filter by Job
         if (selectedJobId !== 'all') {
@@ -1398,7 +1421,9 @@ Mian Mahmood: 0321-6699123</textarea>
             </div>
         `;
 
-        const listHtml = appsToRender.map((app, index) => `
+        const listHtml = appsToRender.map((app, index) => {
+            const isStarred = starredApps.includes(app._id);
+            return `
             <div style="background:var(--bg-primary); padding:20px; border-radius:12px; border:1px solid #333; display: flex; gap: 15px;">
                 <div style="display: flex; flex-direction: column; align-items: center;">
                     <input type="checkbox" class="app-checkbox" value="${app._id}" style="margin-top: 5px; transform: scale(1.5); cursor: pointer;" />
@@ -1407,7 +1432,11 @@ Mian Mahmood: 0321-6699123</textarea>
                 <div style="flex: 1;">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                         <div>
-                            <h3 style="color:var(--primary-color); margin-bottom:5px;">${app.name}</h3>
+                            <div style="display:flex; align-items:center; gap: 10px; margin-bottom:5px;">
+                                <h3 style="color:var(--primary-color); margin:0;">${app.name}</h3>
+                                <a href="mailto:${app.email}" class="btn" style="background:transparent; color:#3b82f6; border:1px solid #3b82f6; padding:2px 8px; border-radius:4px; font-size:0.8rem; text-decoration:none; display:inline-block;" title="Mail ${app.name}">📧 Mail</a>
+                                <button class="star-btn" data-id="${app._id}" style="background:transparent; border:none; cursor:pointer; font-size:1.4rem; padding:0; color:${isStarred ? '#fbbf24' : '#4b5563'}; line-height: 1;" title="${isStarred ? 'Remove from favorites' : 'Mark as favorite'}">${isStarred ? '★' : '☆'}</button>
+                            </div>
                             <p style="color:sandybrown; font-size:0.9rem; margin-bottom:10px;">${app.email} | Applied for: <strong>${app.jobId ? app.jobId.title : 'Deleted Job'}</strong></p>
                             <a href="/api/applications/${app._id}/resume" target="_blank" class="btn" style="background:#3b82f6; color:white; padding:5px 12px; border-radius:6px; font-size:0.85rem; text-decoration:none; display:inline-block;">📄 View CV</a>
                             ${(app.aiRationale && (app.aiRationale.startsWith('AI evaluation failed') || app.aiRationale.startsWith('AI evaluation paused'))) ? 
@@ -1431,9 +1460,25 @@ Mian Mahmood: 0321-6699123</textarea>
                     </div>
                 </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
 
         container.innerHTML = summaryHtml + listHtml;
+
+        // Attach event listeners for Star buttons
+        container.querySelectorAll('.star-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const appId = e.currentTarget.dataset.id;
+                let starred = JSON.parse(localStorage.getItem('3h_starred_apps') || '[]');
+                if (starred.includes(appId)) {
+                    starred = starred.filter(id => id !== appId);
+                } else {
+                    starred.push(appId);
+                }
+                localStorage.setItem('3h_starred_apps', JSON.stringify(starred));
+                renderAdminApplications();
+            });
+        });
 
         // Attach event listeners for Retry buttons
         container.querySelectorAll('.retry-ai-btn').forEach(btn => {
