@@ -1362,10 +1362,18 @@ Mian Mahmood: 0321-6699123</textarea>
             return;
         }
         
-        container.innerHTML = appsToRender.map(app => `
+        const summaryHtml = `
+            <div style="margin-bottom: 15px; background: var(--bg-primary); padding: 10px 20px; border-radius: 8px; border: 1px solid #333; display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: var(--text-secondary);">Showing <strong>${appsToRender.length}</strong> application(s)</span>
+                <span style="color: var(--text-secondary);">Total Received: <strong>${currentApplications.length}</strong></span>
+            </div>
+        `;
+
+        const listHtml = appsToRender.map((app, index) => `
             <div style="background:var(--bg-primary); padding:20px; border-radius:12px; border:1px solid #333; display: flex; gap: 15px;">
-                <div>
+                <div style="display: flex; flex-direction: column; align-items: center;">
                     <input type="checkbox" class="app-checkbox" value="${app._id}" style="margin-top: 5px; transform: scale(1.5); cursor: pointer;" />
+                    <span style="margin-top: 15px; color: var(--text-secondary); font-weight: bold; font-size: 0.9rem;" title="Serial Number">#${index + 1}</span>
                 </div>
                 <div style="flex: 1;">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start;">
@@ -1395,6 +1403,8 @@ Mian Mahmood: 0321-6699123</textarea>
                 </div>
             </div>
         `).join('');
+
+        container.innerHTML = summaryHtml + listHtml;
 
         // Attach event listeners for Retry buttons
         container.querySelectorAll('.retry-ai-btn').forEach(btn => {
