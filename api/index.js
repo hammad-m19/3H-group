@@ -113,10 +113,13 @@ app.post('/api/apply', upload.single('resume'), async (req, res) => {
         let aiRationale = "AI evaluation failed.";
 
         if (process.env.GEMINI_API_KEY) {
-            try {
-                const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-                const prompt = `
+            let attempt = 0;
+            const maxAttempts = 3;
+            let success = false;
+            
+            const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+            
+            const prompt = `
 You are an expert HR recruiter. Please evaluate the following candidate for the job provided.
 Return ONLY a raw JSON object (no markdown formatting, no backticks, just the json) with two keys:
 1. "score": a number from 0 to 100 representing how good of a fit they are.
@@ -131,24 +134,53 @@ Candidate Answers: ${answers}
 Candidate Resume Text:
 ${resumeText}
 `;
-                const response = await ai.models.generateContent({
-                    model: 'gemini-3.6-flash',
-                    contents: [prompt],
-                    config: {
-                        responseMimeType: "application/json",
+
+            while (attempt < maxAttempts && !success) {
+                try {
+                    const response = await ai.models.generateContent({
+                        model: 'gemini-1.5-flash',
+                        contents: [prompt],
+                        config: {
+                            responseMimeType: "application/json",
+                        }
+                    });
+
+                    let resultText = response.text;
+                    // Clean up potential markdown formatting from the response
+                    resultText = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
+
+                    const aiResult = JSON.parse(resultText);
+                    aiScore = aiResult.score || 0;
+                    aiRationale = aiResult.rationale || "AI evaluation completed.";
+                    success = true;
+                } catch (aiErr) {
+                    attempt++;
+                    console.error(`AI Evaluation error (attempt ${attempt}):`, aiErr);
+                    
+                    if (attempt >= maxAttempts) {
+                        let errorMsg = aiErr.message || String(aiErr);
+                        try {
+                            // Try to parse the error message if it's a JSON string
+                            const parsedErr = JSON.parse(errorMsg);
+                            if (parsedErr.error && parsedErr.error.message) {
+                                errorMsg = parsedErr.error.message;
+                            }
+                        } catch (e) {
+                            // Ignore parsing error
+                        }
+
+                        if (errorMsg.includes("429") || errorMsg.includes("quota") || errorMsg.includes("RESOURCE_EXHAUSTED")) {
+                            aiRationale = "AI evaluation paused: API rate limit exceeded. Please try again later.";
+                        } else if (errorMsg.includes("503") || errorMsg.includes("demand") || errorMsg.includes("UNAVAILABLE")) {
+                            aiRationale = "AI evaluation paused: AI models are currently experiencing high demand. Please try again later.";
+                        } else {
+                            aiRationale = "AI evaluation failed: " + errorMsg;
+                        }
+                    } else {
+                        // Exponential backoff: wait 2s, then 4s
+                        await new Promise(resolve => setTimeout(resolve, 2000 * Math.pow(2, attempt - 1)));
                     }
-                });
-
-                let resultText = response.text;
-                // Clean up potential markdown formatting from the response
-                resultText = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
-
-                const aiResult = JSON.parse(resultText);
-                aiScore = aiResult.score;
-                aiRationale = aiResult.rationale;
-            } catch (aiErr) {
-                console.error("AI Evaluation error:", aiErr);
-                aiRationale = "AI evaluation failed: " + aiErr.message;
+                }
             }
         }
 
@@ -216,6 +248,94 @@ app.get('/api/applications/:id/resume', async (req, res) => {
     }
 });
 
+// Retry AI Evaluation
+app.post('/api/applications/:id/evaluate', async (req, res) => {
+    try {
+        const appDoc = await Application.findById(req.params.id).populate('jobId');
+        if (!appDoc) return res.status(404).json({ error: "Application not found" });
+        if (!appDoc.jobId) return res.status(404).json({ error: "Associated job not found" });
+
+        if (!process.env.GEMINI_API_KEY) {
+            return res.status(500).json({ error: "GEMINI_API_KEY is not set" });
+        }
+
+        let attempt = 0;
+        const maxAttempts = 3;
+        let success = false;
+        let aiScore = 0;
+        let aiRationale = "AI evaluation failed.";
+
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const prompt = `
+You are an expert HR recruiter. Please evaluate the following candidate for the job provided.
+Return ONLY a raw JSON object (no markdown formatting, no backticks, just the json) with two keys:
+1. "score": a number from 0 to 100 representing how good of a fit they are.
+2. "rationale": a short paragraph explaining why.
+
+Job Title: ${appDoc.jobId.title}
+Job Description: ${appDoc.jobId.description}
+
+Candidate Name: ${appDoc.name}
+Candidate Answers: ${appDoc.answers}
+
+Candidate Resume Text:
+${appDoc.resumeText}
+`;
+
+        while (attempt < maxAttempts && !success) {
+            try {
+                const response = await ai.models.generateContent({
+                    model: 'gemini-1.5-flash',
+                    contents: [prompt],
+                    config: {
+                        responseMimeType: "application/json",
+                    }
+                });
+
+                let resultText = response.text;
+                resultText = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
+
+                const aiResult = JSON.parse(resultText);
+                aiScore = aiResult.score || 0;
+                aiRationale = aiResult.rationale || "AI evaluation completed.";
+                success = true;
+            } catch (aiErr) {
+                attempt++;
+                console.error(`AI Evaluation error on retry (attempt ${attempt}):`, aiErr);
+                
+                if (attempt >= maxAttempts) {
+                    let errorMsg = aiErr.message || String(aiErr);
+                    try {
+                        const parsedErr = JSON.parse(errorMsg);
+                        if (parsedErr.error && parsedErr.error.message) {
+                            errorMsg = parsedErr.error.message;
+                        }
+                    } catch (e) { }
+
+                    if (errorMsg.includes("429") || errorMsg.includes("quota") || errorMsg.includes("RESOURCE_EXHAUSTED")) {
+                        aiRationale = "AI evaluation paused: API rate limit exceeded. Please try again later.";
+                    } else if (errorMsg.includes("503") || errorMsg.includes("demand") || errorMsg.includes("UNAVAILABLE")) {
+                        aiRationale = "AI evaluation paused: AI models are currently experiencing high demand. Please try again later.";
+                    } else {
+                        aiRationale = "AI evaluation failed: " + errorMsg;
+                    }
+                } else {
+                    await new Promise(resolve => setTimeout(resolve, 2000 * Math.pow(2, attempt - 1)));
+                }
+            }
+        }
+
+        appDoc.aiScore = aiScore;
+        appDoc.aiRationale = aiRationale;
+        await appDoc.save();
+
+        res.json({ message: "AI Evaluation complete", aiScore, aiRationale });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 
 // --- AI HR CHATBOT ---
 app.post('/api/admin/chat', async (req, res) => {
@@ -257,12 +377,49 @@ ${JSON.stringify(candidates, null, 2)}
 Provide a helpful, well-formatted response (using markdown if needed) to answer the admin's query based on the candidate data provided above.
 `;
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-3.6-flash',
-            contents: [prompt],
-        });
+        let attempt = 0;
+        const maxAttempts = 3;
+        let success = false;
+        let replyText = "";
+        
+        while (attempt < maxAttempts && !success) {
+            try {
+                const response = await ai.models.generateContent({
+                    model: 'gemini-1.5-flash',
+                    contents: [prompt],
+                });
+                replyText = response.text;
+                success = true;
+            } catch (aiErr) {
+                attempt++;
+                console.error(`Chat API Error (attempt ${attempt}):`, aiErr);
+                
+                if (attempt >= maxAttempts) {
+                    let errorMsg = aiErr.message || String(aiErr);
+                    try {
+                        const parsedErr = JSON.parse(errorMsg);
+                        if (parsedErr.error && parsedErr.error.message) {
+                            errorMsg = parsedErr.error.message;
+                        }
+                    } catch (e) {
+                        // ignore
+                    }
+                    
+                    if (errorMsg.includes("429") || errorMsg.includes("quota") || errorMsg.includes("RESOURCE_EXHAUSTED")) {
+                        throw new Error("Chat unavailable: API rate limit exceeded. Please try again later or upgrade your plan.");
+                    } else if (errorMsg.includes("503") || errorMsg.includes("demand") || errorMsg.includes("UNAVAILABLE")) {
+                        throw new Error("Chat unavailable: AI models are currently experiencing high demand. Please try again later.");
+                    } else {
+                        throw new Error("AI Chat failed: " + errorMsg);
+                    }
+                } else {
+                    // Exponential backoff
+                    await new Promise(resolve => setTimeout(resolve, 2000 * Math.pow(2, attempt - 1)));
+                }
+            }
+        }
 
-        res.json({ reply: response.text });
+        res.json({ reply: replyText });
     } catch (error) {
         console.error("Chat API Error:", error);
         res.status(500).json({ error: error.message });

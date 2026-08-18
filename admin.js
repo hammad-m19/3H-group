@@ -1373,6 +1373,8 @@ Mian Mahmood: 0321-6699123</textarea>
                             <h3 style="color:var(--primary-color); margin-bottom:5px;">${app.name}</h3>
                             <p style="color:sandybrown; font-size:0.9rem; margin-bottom:10px;">${app.email} | Applied for: <strong>${app.jobId ? app.jobId.title : 'Deleted Job'}</strong></p>
                             <a href="/api/applications/${app._id}/resume" target="_blank" class="btn" style="background:#3b82f6; color:white; padding:5px 12px; border-radius:6px; font-size:0.85rem; text-decoration:none; display:inline-block;">📄 View CV</a>
+                            ${(app.aiRationale && (app.aiRationale.startsWith('AI evaluation failed') || app.aiRationale.startsWith('AI evaluation paused'))) ? 
+                                `<button class="retry-ai-btn btn" data-id="${app._id}" style="background:#8b5cf6; color:white; padding:5px 12px; border-radius:6px; font-size:0.85rem; border:none; cursor:pointer; margin-left:10px;">🔄 Retry AI</button>` : ''}
                         </div>
                         <div style="background:${app.aiScore >= 80 ? '#4ade8020' : (app.aiScore >= 50 ? '#facc1520' : '#f8717120')}; 
                                     color:${app.aiScore >= 80 ? '#4ade80' : (app.aiScore >= 50 ? '#facc15' : '#f87171')};
@@ -1393,6 +1395,33 @@ Mian Mahmood: 0321-6699123</textarea>
                 </div>
             </div>
         `).join('');
+
+        // Attach event listeners for Retry buttons
+        container.querySelectorAll('.retry-ai-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const appId = e.target.dataset.id;
+                const originalText = e.target.innerHTML;
+                e.target.innerHTML = '🔄 Retrying...';
+                e.target.disabled = true;
+                
+                try {
+                    const res = await fetch(`/api/applications/${appId}/evaluate`, { method: 'POST' });
+                    if (res.ok) {
+                        showToast('AI Evaluation completed successfully!');
+                        fetchAdminApplications(); // Refetch to update UI
+                    } else {
+                        const err = await res.json();
+                        showToast(err.error || 'AI Evaluation failed', true);
+                        e.target.innerHTML = originalText;
+                        e.target.disabled = false;
+                    }
+                } catch (err) {
+                    showToast('Error connecting to server', true);
+                    e.target.innerHTML = originalText;
+                    e.target.disabled = false;
+                }
+            });
+        });
     }
 
     // ============================================
