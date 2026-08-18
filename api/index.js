@@ -135,10 +135,14 @@ Candidate Resume Text:
 ${resumeText}
 `;
 
+            const modelsToTry = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.0-pro', 'gemini-3.6-flash'];
+            let currentModelIndex = 0;
+
             while (attempt < maxAttempts && !success) {
                 try {
+                    const modelName = modelsToTry[currentModelIndex % modelsToTry.length];
                     const response = await ai.models.generateContent({
-                        model: 'gemini-1.5-flash',
+                        model: modelName,
                         contents: [prompt],
                         config: {
                             responseMimeType: "application/json",
@@ -154,21 +158,30 @@ ${resumeText}
                     aiRationale = aiResult.rationale || "AI evaluation completed.";
                     success = true;
                 } catch (aiErr) {
+                    let errorMsg = aiErr.message || String(aiErr);
+                    try {
+                        const parsedErr = JSON.parse(errorMsg);
+                        if (parsedErr.error && parsedErr.error.message) {
+                            errorMsg = parsedErr.error.message;
+                        }
+                    } catch (e) {
+                        // Ignore parsing error
+                    }
+
+                    // If model is not found, try the next model in the list immediately
+                    if (errorMsg.includes("not found for API version") || errorMsg.includes("is not supported") || errorMsg.includes("not found")) {
+                        currentModelIndex++;
+                        if (currentModelIndex >= modelsToTry.length) {
+                            aiRationale = "AI evaluation failed: No supported models found. Please check your API key permissions.";
+                            break; // Exhausted all models
+                        }
+                        continue; // Try next model immediately without waiting
+                    }
+
                     attempt++;
                     console.error(`AI Evaluation error (attempt ${attempt}):`, aiErr);
                     
                     if (attempt >= maxAttempts) {
-                        let errorMsg = aiErr.message || String(aiErr);
-                        try {
-                            // Try to parse the error message if it's a JSON string
-                            const parsedErr = JSON.parse(errorMsg);
-                            if (parsedErr.error && parsedErr.error.message) {
-                                errorMsg = parsedErr.error.message;
-                            }
-                        } catch (e) {
-                            // Ignore parsing error
-                        }
-
                         if (errorMsg.includes("429") || errorMsg.includes("quota") || errorMsg.includes("RESOURCE_EXHAUSTED")) {
                             aiRationale = "AI evaluation paused: API rate limit exceeded. Please try again later.";
                         } else if (errorMsg.includes("503") || errorMsg.includes("demand") || errorMsg.includes("UNAVAILABLE")) {
@@ -282,10 +295,14 @@ Candidate Resume Text:
 ${appDoc.resumeText}
 `;
 
+        const modelsToTry = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.0-pro', 'gemini-3.6-flash'];
+        let currentModelIndex = 0;
+
         while (attempt < maxAttempts && !success) {
             try {
+                const modelName = modelsToTry[currentModelIndex % modelsToTry.length];
                 const response = await ai.models.generateContent({
-                    model: 'gemini-1.5-flash',
+                    model: modelName,
                     contents: [prompt],
                     config: {
                         responseMimeType: "application/json",
@@ -300,18 +317,27 @@ ${appDoc.resumeText}
                 aiRationale = aiResult.rationale || "AI evaluation completed.";
                 success = true;
             } catch (aiErr) {
+                let errorMsg = aiErr.message || String(aiErr);
+                try {
+                    const parsedErr = JSON.parse(errorMsg);
+                    if (parsedErr.error && parsedErr.error.message) {
+                        errorMsg = parsedErr.error.message;
+                    }
+                } catch (e) { }
+
+                if (errorMsg.includes("not found for API version") || errorMsg.includes("is not supported") || errorMsg.includes("not found")) {
+                    currentModelIndex++;
+                    if (currentModelIndex >= modelsToTry.length) {
+                        aiRationale = "AI evaluation failed: No supported models found. Please check your API key permissions.";
+                        break; 
+                    }
+                    continue; 
+                }
+
                 attempt++;
                 console.error(`AI Evaluation error on retry (attempt ${attempt}):`, aiErr);
                 
                 if (attempt >= maxAttempts) {
-                    let errorMsg = aiErr.message || String(aiErr);
-                    try {
-                        const parsedErr = JSON.parse(errorMsg);
-                        if (parsedErr.error && parsedErr.error.message) {
-                            errorMsg = parsedErr.error.message;
-                        }
-                    } catch (e) { }
-
                     if (errorMsg.includes("429") || errorMsg.includes("quota") || errorMsg.includes("RESOURCE_EXHAUSTED")) {
                         aiRationale = "AI evaluation paused: API rate limit exceeded. Please try again later.";
                     } else if (errorMsg.includes("503") || errorMsg.includes("demand") || errorMsg.includes("UNAVAILABLE")) {
@@ -382,29 +408,41 @@ Provide a helpful, well-formatted response (using markdown if needed) to answer 
         let success = false;
         let replyText = "";
         
+        const modelsToTry = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.0-pro', 'gemini-3.6-flash'];
+        let currentModelIndex = 0;
+
         while (attempt < maxAttempts && !success) {
             try {
+                const modelName = modelsToTry[currentModelIndex % modelsToTry.length];
                 const response = await ai.models.generateContent({
-                    model: 'gemini-1.5-flash',
+                    model: modelName,
                     contents: [prompt],
                 });
                 replyText = response.text;
                 success = true;
             } catch (aiErr) {
+                let errorMsg = aiErr.message || String(aiErr);
+                try {
+                    const parsedErr = JSON.parse(errorMsg);
+                    if (parsedErr.error && parsedErr.error.message) {
+                        errorMsg = parsedErr.error.message;
+                    }
+                } catch (e) {
+                    // ignore
+                }
+
+                if (errorMsg.includes("not found for API version") || errorMsg.includes("is not supported") || errorMsg.includes("not found")) {
+                    currentModelIndex++;
+                    if (currentModelIndex >= modelsToTry.length) {
+                        throw new Error("AI Chat failed: No supported models found. Check API key permissions.");
+                    }
+                    continue; 
+                }
+
                 attempt++;
                 console.error(`Chat API Error (attempt ${attempt}):`, aiErr);
                 
                 if (attempt >= maxAttempts) {
-                    let errorMsg = aiErr.message || String(aiErr);
-                    try {
-                        const parsedErr = JSON.parse(errorMsg);
-                        if (parsedErr.error && parsedErr.error.message) {
-                            errorMsg = parsedErr.error.message;
-                        }
-                    } catch (e) {
-                        // ignore
-                    }
-                    
                     if (errorMsg.includes("429") || errorMsg.includes("quota") || errorMsg.includes("RESOURCE_EXHAUSTED")) {
                         throw new Error("Chat unavailable: API rate limit exceeded. Please try again later or upgrade your plan.");
                     } else if (errorMsg.includes("503") || errorMsg.includes("demand") || errorMsg.includes("UNAVAILABLE")) {
