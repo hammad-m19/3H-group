@@ -554,6 +554,42 @@ ${numbers}`;
     }
 });
 
+
+// Admin: Send Custom Email
+app.post('/api/send-custom-email', async (req, res) => {
+    try {
+        const { email, subject, body } = req.body;
+        if (!email || !subject || !body) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+            return res.status(500).json({ error: 'Email configuration is missing on server' });
+        }
+
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS
+            }
+        });
+
+        const mailOptions = {
+            from: `"3H Group HR" <${process.env.EMAIL_USER}>`,
+            to: email,
+            subject: subject,
+            text: body
+        };
+
+        await transporter.sendMail(mailOptions);
+        res.json({ success: true });
+    } catch (error) {
+        console.error("Custom Email API Error:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = app;
 
 if (require.main === module) {
