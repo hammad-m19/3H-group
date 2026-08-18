@@ -135,14 +135,10 @@ Candidate Resume Text:
 ${resumeText}
 `;
 
-            const modelsToTry = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.0-pro', 'gemini-3.6-flash'];
-            let currentModelIndex = 0;
-
             while (attempt < maxAttempts && !success) {
                 try {
-                    const modelName = modelsToTry[currentModelIndex % modelsToTry.length];
                     const response = await ai.models.generateContent({
-                        model: modelName,
+                        model: 'gemini-3.6-flash',
                         contents: [prompt],
                         config: {
                             responseMimeType: "application/json",
@@ -166,16 +162,6 @@ ${resumeText}
                         }
                     } catch (e) {
                         // Ignore parsing error
-                    }
-
-                    // If model is not found, try the next model in the list immediately
-                    if (errorMsg.includes("not found for API version") || errorMsg.includes("is not supported") || errorMsg.includes("not found")) {
-                        currentModelIndex++;
-                        if (currentModelIndex >= modelsToTry.length) {
-                            aiRationale = "AI evaluation failed: No supported models found. Please check your API key permissions.";
-                            break; // Exhausted all models
-                        }
-                        continue; // Try next model immediately without waiting
                     }
 
                     attempt++;
@@ -295,14 +281,10 @@ Candidate Resume Text:
 ${appDoc.resumeText}
 `;
 
-        const modelsToTry = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.0-pro', 'gemini-3.6-flash'];
-        let currentModelIndex = 0;
-
         while (attempt < maxAttempts && !success) {
             try {
-                const modelName = modelsToTry[currentModelIndex % modelsToTry.length];
                 const response = await ai.models.generateContent({
-                    model: modelName,
+                    model: 'gemini-3.6-flash',
                     contents: [prompt],
                     config: {
                         responseMimeType: "application/json",
@@ -324,15 +306,6 @@ ${appDoc.resumeText}
                         errorMsg = parsedErr.error.message;
                     }
                 } catch (e) { }
-
-                if (errorMsg.includes("not found for API version") || errorMsg.includes("is not supported") || errorMsg.includes("not found")) {
-                    currentModelIndex++;
-                    if (currentModelIndex >= modelsToTry.length) {
-                        aiRationale = "AI evaluation failed: No supported models found. Please check your API key permissions.";
-                        break; 
-                    }
-                    continue; 
-                }
 
                 attempt++;
                 console.error(`AI Evaluation error on retry (attempt ${attempt}):`, aiErr);
@@ -408,14 +381,10 @@ Provide a helpful, well-formatted response (using markdown if needed) to answer 
         let success = false;
         let replyText = "";
         
-        const modelsToTry = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.0-pro', 'gemini-3.6-flash'];
-        let currentModelIndex = 0;
-
         while (attempt < maxAttempts && !success) {
             try {
-                const modelName = modelsToTry[currentModelIndex % modelsToTry.length];
                 const response = await ai.models.generateContent({
-                    model: modelName,
+                    model: 'gemini-3.6-flash',
                     contents: [prompt],
                 });
                 replyText = response.text;
@@ -429,14 +398,6 @@ Provide a helpful, well-formatted response (using markdown if needed) to answer 
                     }
                 } catch (e) {
                     // ignore
-                }
-
-                if (errorMsg.includes("not found for API version") || errorMsg.includes("is not supported") || errorMsg.includes("not found")) {
-                    currentModelIndex++;
-                    if (currentModelIndex >= modelsToTry.length) {
-                        throw new Error("AI Chat failed: No supported models found. Check API key permissions.");
-                    }
-                    continue; 
                 }
 
                 attempt++;
